@@ -1,7 +1,6 @@
 {
   "title": "Products Report",
   "orientation": "L",
-  "format": "A4",
   "author": "Sales Department",
   "margins": [10, 15, 10],
 
