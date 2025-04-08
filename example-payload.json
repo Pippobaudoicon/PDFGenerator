@@ -1,0 +1,36 @@
+{
+  "title": "Products Report",
+  "orientation": "L",
+  "format": "A4",
+  "author": "Sales Department",
+  "margins": [10, 15, 10],
+
+  "columns": ["Product", "Category", "Price", "Stock"],
+  "rows": [
+    ["Product A", "Electronics", 299.99, 45],
+    ["Product B", "Furniture", 199.50, 12],
+    ["Product C", "Electronics", 99.99, 200],
+    ["Product D", "Clothing", 49.99, 75],
+    ["Product E", "Furniture", 399.99, 8],
+    ["Product F", "Clothing", 29.99, 150]
+  ],
+  
+  "column_types": {
+    "Price": "price",
+    "Stock": "number"
+  },
+    
+  "content_before": "<h2>Product Sales Summary</h2>",
+  "content_after": "<p>Total Items: 35</p><p>Total Revenue: €7,599.65</p>",
+
+  "group_by": "Category",
+  "sort_by": "Price",
+  "sort_ascending": false,
+  
+  "table_border": 1,
+  "table_padding": 6,
+  "header_bg": "#e6f2ff",
+  
+  "output_mode": "B64", 
+  "filename": "product_sales_report.pdf"
+}

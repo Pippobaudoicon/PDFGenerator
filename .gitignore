@@ -1,0 +1,12 @@
+pdf_output/
+# Composer files
+/vendor/
+composer.phar
+composer.lock
+.phpunit.result.cache
+
+# Composer auth file
+auth.json
+
+# Dependency directories
+node_modules/
