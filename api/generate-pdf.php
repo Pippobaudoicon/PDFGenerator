@@ -72,15 +72,15 @@ try {
 
     // Check if we should group by category
     if (isset($data['group_by'])) {
-        // Get the group by column
+        // Get the group by column(s)
         $groupByColumn = $data['group_by'];
-
+        
         // Get the optional sort column for sorting within each category
         $sortColumn = $data['sort_by'] ?? null;
         $sortAscending = $data['sort_ascending'] ?? true;
 
         // Create the first page for the document if there's content_before
-        // Otherwise, let addTablesByCategoryPerPage add the first page
+        // Otherwise, let the table methods add the first page
         $hasContentBefore = isset($data['content_before']);
         $pageOrientation = $data['orientation'] ?? $config['orientation'];
 
@@ -99,14 +99,32 @@ try {
             // on this same page right after the content_before text
         }
 
-        // Add tables grouped by category, specifying if there's already content on the first page
-        $generator->addTablesByCategoryPerPage(
-            $groupByColumn,
-            $sortColumn,
-            $sortAscending,
-            $tableOptions,
-            $hasContentBefore
-        );
+        // Check if we're using multi-level grouping (array of columns) or single category
+        if (is_array($groupByColumn) && count($groupByColumn) > 1) {
+            // Multi-level grouping with multiple columns
+            $generator->addTablesByMultipleCategories(
+                $groupByColumn,
+                $sortColumn,
+                $sortAscending,
+                $tableOptions,
+                $hasContentBefore
+            );
+        } else {
+            // Single-level grouping (backward compatibility)
+            // If $groupByColumn is an array with one element, extract it
+            if (is_array($groupByColumn) && count($groupByColumn) === 1) {
+                $groupByColumn = $groupByColumn[0];
+            }
+            
+            // Add tables grouped by a single category
+            $generator->addTablesByCategoryPerPage(
+                $groupByColumn,
+                $sortColumn,
+                $sortAscending,
+                $tableOptions,
+                $hasContentBefore
+            );
+        }
 
         // Check if we should add content after all tables
         if (isset($data['content_after'])) {

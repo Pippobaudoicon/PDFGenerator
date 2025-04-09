@@ -188,6 +188,97 @@ class DataSorter
     }
 
     /**
+     * Group data by multiple category columns in hierarchical order
+     * 
+     * @param array $categoryColumns Array of column indices or names to group by, in order of hierarchy
+     * @param int|string|null $sortColumn Column index or name to sort by within each lowest-level category (optional)
+     * @param bool $ascending Whether to sort in ascending order
+     * @return array Hierarchically grouped data with nested structure
+     */
+    public function byMultipleCategories(array $categoryColumns, $sortColumn = null, bool $ascending = true)
+    {
+        if (!isset($this->data['rows']) || !is_array($this->data['rows'])) {
+            throw new Exception("No data rows found to group");
+        }
+
+        if (empty($categoryColumns)) {
+            throw new Exception("At least one category column must be specified");
+        }
+
+        // Convert all string column names to indices
+        $categoryIndices = [];
+        foreach ($categoryColumns as $column) {
+            if (is_string($column)) {
+                $categoryIndices[] = $this->findColumnIndex($column);
+            } else {
+                $categoryIndices[] = $column;
+            }
+        }
+
+        // Get the column index if a column name is provided for sort column
+        if ($sortColumn !== null && is_string($sortColumn)) {
+            $sortColumn = $this->findColumnIndex($sortColumn);
+        }
+
+        // Recursive function to group data based on the category hierarchy
+        $groupData = function ($rows, $categoryIdx, $depth = 0) use (&$groupData, $categoryIndices, $sortColumn, $ascending) {
+            // If we've processed all category levels, return the rows
+            if ($depth >= count($categoryIndices)) {
+                // If a sort column is specified, sort the rows
+                if ($sortColumn !== null && count($rows) > 1) {
+                    usort($rows, function ($a, $b) use ($sortColumn, $ascending) {
+                        // Handle cases where values don't exist
+                        if (!isset($a[$sortColumn]) && !isset($b[$sortColumn])) {
+                            return 0;
+                        }
+                        if (!isset($a[$sortColumn])) return $ascending ? -1 : 1;
+                        if (!isset($b[$sortColumn])) return $ascending ? 1 : -1;
+
+                        $valueA = $a[$sortColumn];
+                        $valueB = $b[$sortColumn];
+
+                        // Get column type for proper comparison
+                        $columnType = $this->getColumnType($sortColumn);
+
+                        return $this->compareValues($valueA, $valueB, $ascending, $columnType);
+                    });
+                }
+                return $rows;
+            }
+
+            // Get current category column index
+            $currentCategoryIdx = $categoryIndices[$depth];
+
+            // Group rows by current category
+            $grouped = [];
+            foreach ($rows as $row) {
+                $categoryValue = isset($row[$currentCategoryIdx]) ? (string)$row[$currentCategoryIdx] : 'Uncategorized';
+
+                if (!isset($grouped[$categoryValue])) {
+                    $grouped[$categoryValue] = [];
+                }
+
+                $grouped[$categoryValue][] = $row;
+            }
+
+            // Process next level for each group
+            $result = [];
+            foreach ($grouped as $category => $categoryRows) {
+                // Recursively group the next level
+                $result[$category] = $groupData($categoryRows, $currentCategoryIdx, $depth + 1);
+            }
+
+            // Sort categories alphabetically at each level
+            ksort($result);
+
+            return $result;
+        };
+
+        // Start the recursive grouping with all rows
+        return $groupData($this->data['rows'], $categoryIndices[0]);
+    }
+
+    /**
      * Compare two values based on their type
      * 
      * @param mixed $valueA First value

@@ -559,4 +559,112 @@ class PDFGenerator
 
         return $this;
     }
+
+    /**
+     * Add tables grouped by multiple categories in a hierarchical manner
+     * 
+     * @param array $categoryColumns Array of column indices or names to group by, in order of hierarchy
+     * @param int|string|null $sortColumn Column index or name to sort by within each lowest-level category (optional)
+     * @param bool $ascending Whether to sort in ascending order
+     * @param array $options Table formatting options
+     * @param bool $hasContentBefore Whether there is content before the first table
+     * @return PDFGenerator
+     */
+    public function addTablesByMultipleCategories(array $categoryColumns, $sortColumn = null, bool $ascending = true, array $options = [], bool $hasContentBefore = false)
+    {
+        // Use internal DataSorter to group data by multiple categories
+        $this->sorter->setData($this->data);
+        $this->sorter->setColumnConfigs($this->columnConfigs);
+        $groupedData = $this->sorter->byMultipleCategories($categoryColumns, $sortColumn, $ascending);
+
+        // If no data groups were created, add an empty page to avoid errors
+        if (empty($groupedData)) {
+            if (!$hasContentBefore) {
+                $this->addPage($this->config['orientation']);
+            }
+            return $this;
+        }
+
+        // Get the column names from the data for display
+        $columns = $this->data['columns'] ?? [];
+
+        // Resolve category column names for display
+        $categoryColNames = [];
+        foreach ($categoryColumns as $colKey) {
+            if (is_numeric($colKey) && isset($columns[$colKey])) {
+                $categoryColNames[] = $columns[$colKey];
+            } else {
+                $categoryColNames[] = $colKey;
+            }
+        }
+
+        $pageOrientation = $this->config['orientation'];
+        $isFirstCategory = true;
+
+        // Get category column name for the top level
+        $topCategoryName = $categoryColNames[0] ?? "Category";
+
+        // Recursive function to process each level of the hierarchy
+        $processLevel = function($data, $level = 0, $path = [], $isFirst = true) use (
+            &$processLevel, $categoryColNames, $columns, $options, $pageOrientation, &$isFirstCategory, $hasContentBefore
+        ) {
+            // For the very first category:
+            // If there's already content on the page (hasContentBefore=true), don't add a new page
+            // Otherwise, add the first page
+            if ($level === 0 && $isFirstCategory && $isFirst) {
+                if (!$hasContentBefore) {
+                    $this->addPage($pageOrientation);
+                }
+                $isFirstCategory = false;
+            } 
+            // For subsequent top-level categories, always add a new page
+            else if ($level === 0 && $isFirst) {
+                $this->addPage($pageOrientation);
+            }
+
+            // Current level's category name
+            $currentCategoryName = $categoryColNames[$level] ?? "Category";
+
+            // For each group at this level
+            foreach ($data as $category => $contents) {
+                // Build the category path for display
+                $currentPath = array_merge($path, [$category]);
+                
+                // Build the title for this level
+                $titlePrefix = '';
+                if (!empty($path)) {
+                    $titlePrefix = implode(' > ', $path) . ' > ';
+                }
+                
+                $title = "$currentCategoryName: $category";
+                if ($level > 0) {
+                    // Only show hierarchy in title if we're beyond the first level
+                    $title = "$titlePrefix$title";
+                }
+                
+                // If this is not a leaf node (contains more grouped data)
+                if (is_array($contents) && !isset($contents[0])) {
+                    // Add title for this level
+                    $this->addTitle($title);
+                    
+                    // Process next level
+                    $processLevel($contents, $level + 1, $currentPath, false);
+                } 
+                // If this is a leaf node (contains actual rows)
+                else if (is_array($contents)) {
+                    // Add title and table for the leaf level
+                    $this->addTitle($title);
+                    $this->addTable($columns, $contents, $options);
+                    
+                    // Add spacer after table
+                    $this->pdf->Ln(5);
+                }
+            }
+        };
+
+        // Start processing from the top level
+        $processLevel($groupedData);
+
+        return $this;
+    }
 }
