@@ -44,7 +44,7 @@ L'API accetta richieste POST con un payload JSON che deve contenere almeno quest
 | `content_font_size` | number | `10` | Dimensione font del contenuto |
 | `columns` | array | - | **Obbligatorio**: Nomi delle colonne della tabella |
 | `rows` | array | - | **Obbligatorio**: Dati delle righe della tabella |
-| `column_types` | object | - | Tipi di dati per le colonne (per formattazione) |
+| `column_config` | object | - | Configurazione avanzata delle colonne per formattazione e stile |
 | `table_border` | number | `1` | Spessore del bordo tabella |
 | `table_padding` | number | `5` | Padding delle celle in tabella |
 | `header_bg` | string | `"#f2f2f2"` | Colore di sfondo intestazione tabella (formato hex) |
@@ -56,9 +56,21 @@ L'API accetta richieste POST con un payload JSON che deve contenere almeno quest
 | `output_mode` | string | `"B64"` | Modalità output: `"B64"` (Base64) o `"F"` (File) |
 | `filename` | string | - | Nome del file PDF generato |
 
-### Tipi di Dati Supportati per Colonne
+### Configurazione Avanzata delle Colonne
 
-Utilizzando il parametro `column_types`, è possibile specificare il formato di visualizzazione per ciascuna colonna:
+Utilizzando il parametro `column_config`, è possibile specificare diverse proprietà per ogni colonna:
+
+| Proprietà | Tipo | Default | Descrizione |
+|-----------|------|---------|-------------|
+| `type` | string | `"string"` | Tipo di dati (string, price, percentage, number, date) |
+| `align` | string | `"L"` | Allineamento del testo: "L" (sinistra), "C" (centro), "R" (destra) |
+| `width` | string | `null` | Larghezza fissa della colonna (es. "20mm", "2cm") |
+| `fontWeight` | string | `"N"` | Stile del font: "N" (normale), "B" (grassetto), "I" (corsivo), "BI" (grassetto corsivo) |
+| `backgroundColor` | string | `null` | Colore di sfondo della colonna in formato HTML (es. "#f0f0f0") |
+| `textColor` | string | `null` | Colore del testo della colonna in formato HTML (es. "#006400") |
+| `padding` | number | `1` | Padding della cella in punti |
+
+### Tipi di Dati Supportati per Colonne
 
 | Tipo | Descrizione | Esempio |
 |------|-------------|---------|
@@ -68,13 +80,13 @@ Utilizzando il parametro `column_types`, è possibile specificare il formato di 
 | `number` | Numero intero formattato | `"1.234"` |
 | `date` | Data formattata (gg/mm/aaaa) | `"01/01/2023"` |
 
-### Definizione dei Tipi di Colonna
+### Definizione della Configurazione Colonne
 
-È possibile specificare i tipi di colonna in diversi modi:
+È possibile specificare le configurazioni di colonna in diversi modi:
 
-1. **Per indice**: `{"column_types": {"0": "price", "2": "number"}}`
-2. **Per nome**: `{"column_types": {"Prezzo": "price", "Quantità": "number"}}`
-3. **Con metadati aggiuntivi**: `{"column_types": {"0": {"type": "price"}, "Totale": {"type": "price"}}}`
+1. **Per indice**: `{"column_config": {"0": {"type": "price", "align": "right"}}}`
+2. **Per nome**: `{"column_config": {"Prezzo": {"type": "price", "align": "right"}}}`
+3. **Con stile e formattazione**: `{"column_config": {"Totale": {"type": "price", "align": "right", "fontWeight": "B", "textColor": "#006400"}}}`
 
 ### Esempi di Utilizzo
 
@@ -89,10 +101,10 @@ Utilizzando il parametro `column_types`, è possibile specificare il formato di 
     ["Prodotto B", "25.00", "2", "50.00"],
     ["Prodotto C", "15.75", "3", "47.25"]
   ],
-  "column_types": {
-    "Prezzo": "price",
-    "Quantità": "number",
-    "Totale": "price"
+  "column_config": {
+    "Prezzo": {"type": "price", "align": "right"},
+    "Quantità": {"type": "number", "align": "center"},
+    "Totale": {"type": "price", "align": "right", "fontWeight": "B"}
   },
   "content_before": "<h1>Report Mensile</h1><p>Questo è il report delle vendite di aprile 2025.</p>"
 }
@@ -111,9 +123,10 @@ Utilizzando il parametro `column_types`, è possibile specificare il formato di 
     ["Abbigliamento", "Pantaloni", "49.99", "15"],
     ["Elettronica", "Tablet", "299.00", "8"]
   ],
-  "column_types": {
-    "Prezzo": "price",
-    "Quantità": "number"
+  "column_config": {
+    "Categoria": {"type": "string", "fontWeight": "B", "backgroundColor": "#f0f0f0"},
+    "Prezzo": {"type": "price", "align": "right"},
+    "Quantità": {"type": "number", "align": "center"}
   },
   "group_by": "Categoria",
   "sort_by": "Prezzo",
@@ -140,9 +153,32 @@ Utilizzando il parametro `column_types`, è possibile specificare il formato di 
     ["Product F", "Clothing", 29.99, 150]
   ],
   
-  "column_types": {
-    "Price": "price",
-    "Stock": "number"
+  "column_config": {
+    "Product": {
+      "type": "string",
+      "align": "left",
+      "fontWeight": "B",
+      "width": "40mm"
+    },
+    "Category": {
+      "type": "string",
+      "align": "center",
+      "backgroundColor": "#f0f0f0",
+      "width": "30mm"
+    },
+    "Price": {
+      "type": "price",
+      "align": "right",
+      "textColor": "#006400",
+      "width": "25mm"
+    },
+    "Stock": {
+      "type": "number",
+      "align": "center",
+      "fontWeight": "B",
+      "width": "20mm",
+      "backgroundColor": "#fff8e1"
+    }
   },
     
   "content_before": "<h2>Product Sales Summary</h2>",
@@ -254,11 +290,21 @@ La funzione `addTablesByCategoryPerPage` consente di:
 - Disporre ogni categoria su una nuova pagina
 - Ordinare i dati all'interno di ciascuna categoria
 
-### Formattazione dei Dati
+### Formattazione e Stile delle Colonne
+
+La classe `ColumnConfig` gestisce:
+- Tipi di dati per la formattazione (numeri, date, prezzi, ecc.)
+- Allineamento del testo (sinistra, centro, destra)
+- Stili di font (normale, grassetto, corsivo)
+- Colori personalizzati per testo e sfondo
+- Larghezze fisse delle colonne
+- Padding delle celle
+
+### Ordinamento Intelligente dei Dati
 
 La classe `DataSorter` gestisce:
 - Ordinamento di dati per qualsiasi colonna
-- Supporto per diversi tipi di dati (numeri, date, prezzi, ecc.)
+- Supporto per diversi tipi di dati durante l'ordinamento
 - Confronti personalizzati basati sul tipo di dati
 
 ### Personalizzazione del Layout
@@ -287,8 +333,8 @@ fetch('http://tuo-server/generate-pdf.php', {
       ["Prodotto A", "10.50"],
       ["Prodotto B", "25.00"]
     ],
-    "column_types": {
-      "Prezzo": "price"
+    "column_config": {
+      "Prezzo": {"type": "price", "align": "right"}
     }
   })
 })
@@ -308,8 +354,8 @@ $data = [
     ["Prodotto A", "10.50"],
     ["Prodotto B", "25.00"]
   ],
-  "column_types" => [
-    "Prezzo" => "price"
+  "column_config" => [
+    "Prezzo" => ["type" => "price", "align" => "right"]
   ]
 ];
 

@@ -1,5 +1,6 @@
 <?php
 
+require_once(__DIR__ . '/ColumnConfig.php');
 require_once(__DIR__ . '/DataSorter.php');
 
 /**
@@ -42,11 +43,14 @@ class PDFGenerator
         'table_padding' => 5,
     ];
 
+    /** @var string PDF filename */
+    private $filename;
+
     /** @var array Data to be rendered in the PDF */
     private $data;
 
-    /** @var array Column types for formatting */
-    private $columnTypes = [];
+    /** @var array Column configurations */
+    private $columnConfigs = [];
 
     /**
      * Constructor - Initialize the PDF generator with configuration
@@ -123,42 +127,140 @@ class PDFGenerator
     }
 
     /**
-     * Set column types for formatting
+     * Set column configurations for formatting
      * 
-     * @param array $types Column types can be specified in multiple formats:
-     *                     - By index: [0 => 'price', 2 => 'number']
-     *                     - By column name: ['Price' => 'price', 'Quantity' => 'number']
-     *                     - With metadata: [0 => ['type' => 'price'], 'Total' => ['type' => 'price']]
+     * @param array $configs Column configurations can be specified in multiple formats:
+     *                     - By index: [0 => ['type' => 'price'], 2 => ['type' => 'number']]
+     *                     - By column name: ['Price' => ['type' => 'price'], 'Quantity' => ['type' => 'number']]
+     *                     - With formatting: ['Price' => ['type' => 'price', 'align' => 'right', 'width' => '20mm']]
      * @return PDFGenerator
      */
-    public function setColumnTypes(array $types)
+    public function setColumnConfigs(array $configs)
     {
-        // Process the column types into a normalized format
-        $normalizedTypes = [];
+        // Clear existing column configs
+        $this->columnConfigs = [];
 
-        foreach ($types as $key => $value) {
-            // If value is a string, it's a simple type definition
+        // Process the column configs into ColumnConfig objects
+        foreach ($configs as $key => $value) {
+            // If value is a simple string, it's just a type definition
             if (is_string($value)) {
-                $normalizedTypes[$key] = ['type' => $value];
+                $this->columnConfigs[$key] = new ColumnConfig(['type' => $value]);
             }
-            // If value is an array, it already has metadata
+            // If value is an array, it contains multiple properties
             else if (is_array($value)) {
-                $normalizedTypes[$key] = $value;
+                $this->columnConfigs[$key] = new ColumnConfig($value);
             }
         }
-
-        $this->columnTypes = $normalizedTypes;
+        
         return $this;
     }
 
     /**
-     * Get column types
+     * Get column configurations
      * 
-     * @return array Column types
+     * @return array Array of ColumnConfig objects
      */
-    public function getColumnTypes()
+    public function getColumnConfigs()
     {
-        return $this->columnTypes;
+        return $this->columnConfigs;
+    }
+
+    /**
+     * Set or update configuration for a specific column
+     * 
+     * @param mixed $columnKey Column index or name
+     * @param array|string $config Config array or type string
+     * @return PDFGenerator
+     */
+    public function setColumnConfig($columnKey, $config)
+    {
+        // If config is just a string, treat it as the type
+        if (is_string($config)) {
+            $config = ['type' => $config];
+        }
+
+        // If column already has a config, update it
+        if (isset($this->columnConfigs[$columnKey])) {
+            $this->columnConfigs[$columnKey]->setProperties($config);
+        } else {
+            // Otherwise create a new config
+            $this->columnConfigs[$columnKey] = new ColumnConfig($config);
+        }
+        
+        return $this;
+    }
+
+    /**
+     * Get the column configuration for a specific column
+     * 
+     * @param mixed $columnKey Column index or name
+     * @return ColumnConfig Column configuration (or default if not found)
+     */
+    public function getColumnConfig($columnKey)
+    {
+        // Direct match by column index or name
+        if (isset($this->columnConfigs[$columnKey])) {
+            return $this->columnConfigs[$columnKey];
+        }
+
+        // If the key is a string (column name), try to find a matching column index
+        if (is_string($columnKey) && isset($this->data['columns'])) {
+            foreach ($this->data['columns'] as $index => $columnName) {
+                if (strcasecmp($columnName, $columnKey) === 0 && isset($this->columnConfigs[$index])) {
+                    return $this->columnConfigs[$index];
+                }
+            }
+        }
+
+        // If the key is a numeric index, try to find a matching column name
+        if (is_numeric($columnKey) && isset($this->data['columns'][$columnKey])) {
+            $columnName = $this->data['columns'][$columnKey];
+            if (isset($this->columnConfigs[$columnName])) {
+                return $this->columnConfigs[$columnName];
+            }
+        }
+
+        // Return a default column configuration
+        return new ColumnConfig();
+    }
+
+    /**
+     * Set the filename for the PDF
+     * 
+     * @param string $filename Filename for the PDF
+     * @return PDFGenerator
+     */
+    public function setFilename(string $filename = '')
+    {
+        if (empty($filename)) {
+            // Generate a unique filename based on timestamp and random string
+            $timestamp = date('Ymd_His') . '_' . substr(microtime(), 2, 3);
+
+            $randomStr = substr(md5(uniqid(mt_rand(), true)), 0, 8);
+            $this->filename = "document_{$timestamp}_{$randomStr}.pdf";
+        } else {
+            // Add timestamp to ensure uniqueness of the filename
+            $timestamp = date('Ymd_His') . '_' . substr(microtime(), 2, 3);
+            // Extract the filename without extension even if it doens't have one
+            $pathInfo = pathinfo($filename);
+            $name = $pathInfo['filename'];
+            // Replace spaces with underscores and remove special characters in the filename
+            $name = preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $name));
+
+            // Always use .pdf extension
+            $this->filename = "{$name}_{$timestamp}.pdf";
+        }
+        return $this;
+    }
+
+    /**
+     * Get the current filename
+     * 
+     * @return string Current filename
+     */
+    public function getFilename()
+    {
+        return $this->filename;
     }
 
     /**
@@ -171,7 +273,7 @@ class PDFGenerator
     public function sortData($columnIndex, bool $ascending = true)
     {
         $this->sorter->setData($this->data);
-        $this->sorter->setColumnTypes($this->columnTypes);
+        $this->sorter->setColumnConfigs($this->columnConfigs);
         $this->sorter->byColumn($columnIndex, $ascending);
         $this->data = $this->sorter->getData();
 
@@ -260,8 +362,22 @@ class PDFGenerator
             $headerBg
         );
 
-        foreach ($columns as $column) {
-            $html .= '<td>' . htmlspecialchars((string)$column) . '</td>';
+        foreach ($columns as $index => $column) {
+            // Get column configuration for width only
+            $columnConfig = $this->getColumnConfig($index);
+            
+            // Apply only column width if specified
+            $widthAttr = '';
+            if ($columnConfig->getWidth() !== null) {
+                $widthAttr = ' width="' . $columnConfig->getWidth() . '"';
+            }
+            
+            // Create header cell with center alignment - always centered regardless of column config
+            $html .= sprintf(
+                '<td%s style="text-align: center;">%s</td>',
+                $widthAttr,
+                htmlspecialchars((string)$column)
+            );
         }
 
         $html .= '</tr>';
@@ -274,10 +390,19 @@ class PDFGenerator
             $rowData = array_pad(is_array($row) ? $row : [], count($columns), '');
 
             foreach ($rowData as $index => $cell) {
-                // Format cell value based on column type
-                $formattedValue = $this->formatCellValue($cell, $index);
+                // Get column configuration for styling and formatting
+                $columnConfig = $this->getColumnConfig($index);
+                $styleAttr = $columnConfig->getStyleString();
+                
+                // Format cell value using the column configuration
+                $formattedValue = $columnConfig->formatValue($cell);
 
-                $html .= '<td>' . htmlspecialchars($formattedValue) . '</td>';
+                // Create data cell with styles
+                $html .= sprintf(
+                    '<td%s>%s</td>',
+                    $styleAttr ? ' style="' . $styleAttr . '"' : '',
+                    htmlspecialchars($formattedValue)
+                );
             }
 
             $html .= '</tr>';
@@ -289,106 +414,6 @@ class PDFGenerator
         $this->pdf->writeHTML($html, true, false, true, false, '');
 
         return $this;
-    }
-
-    /**
-     * Format cell value based on column type
-     * 
-     * @param mixed $value Cell value
-     * @param int|string $columnIndex Column index
-     * @return string Formatted value
-     */
-    private function formatCellValue($value, $columnIndex)
-    {
-        // Get column type (defaults to 'string')
-        $columnType = $this->getColumnType($columnIndex);
-
-        switch ($columnType) {
-            case 'price':
-                if (is_numeric($value)) {
-                    // Format as price with euro symbol
-                    return '€ ' . number_format((float)$value, 2, ',', '.');
-                }
-                break;
-
-            case 'string':
-                // For string type, ensure value is a string
-                if (!is_string($value)) {
-                    return (string)$value;
-                }
-                break;
-
-            case 'percentage':
-                if (is_numeric($value)) {
-                    // Format as percentage
-                    return number_format((float)$value, 2) . '%';
-                }
-                break;
-
-            case 'number':
-                if (is_numeric($value)) {
-                    // Format as number
-                    return number_format((float)$value, 0, ',', '.');
-                }
-                break;
-
-            case 'date':
-                if ($value instanceof DateTime) {
-                    // Format as date
-                    return $value->format('d/m/Y');
-                } else if (is_string($value)) {
-                    // Try to parse string as date
-                    $date = DateTime::createFromFormat('Y-m-d', $value);
-                    if ($date) {
-                        return $date->format('d/m/Y');
-                    }
-                }
-                break;
-
-            default:
-                break;
-        }
-
-        // Default formatting when no specific type handling applies
-        if (!is_string($value)) {
-            return json_encode($value);
-        }
-
-        return $value;
-    }
-
-    /**
-     * Get the type for a specific column
-     * 
-     * @param mixed $columnKey Column index or name
-     * @return string The column type (defaults to 'string' if not defined)
-     */
-    private function getColumnType($columnKey)
-    {
-        // Direct match by column index or name
-        if (isset($this->columnTypes[$columnKey])) {
-            return $this->columnTypes[$columnKey]['type'] ?? 'string';
-        }
-
-        // If the key is a string (column name), try to find a matching column index
-        if (is_string($columnKey) && isset($this->data['columns'])) {
-            foreach ($this->data['columns'] as $index => $columnName) {
-                if (strcasecmp($columnName, $columnKey) === 0 && isset($this->columnTypes[$index])) {
-                    return $this->columnTypes[$index]['type'] ?? 'string';
-                }
-            }
-        }
-
-        // If the key is a numeric index, try to find a matching column name
-        if (is_numeric($columnKey) && isset($this->data['columns'][$columnKey])) {
-            $columnName = $this->data['columns'][$columnKey];
-            if (isset($this->columnTypes[$columnName])) {
-                return $this->columnTypes[$columnName]['type'] ?? 'string';
-            }
-        }
-
-        // Default to string type if no type is specified
-        return 'string';
     }
 
     /**
@@ -478,7 +503,7 @@ class PDFGenerator
     {
         // Use internal DataSorter to group data by category
         $this->sorter->setData($this->data);
-        $this->sorter->setColumnTypes($this->columnTypes);
+        $this->sorter->setColumnConfigs($this->columnConfigs);
         $groupedData = $this->sorter->byCategory($categoryColumn, $sortColumn, $ascending);
 
         // If no data groups were created, add an empty page to avoid errors

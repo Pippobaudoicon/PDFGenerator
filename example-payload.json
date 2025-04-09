@@ -14,9 +14,32 @@
     ["Product F", "Clothing", 29.99, 150]
   ],
   
-  "column_types": {
-    "Price": "price",
-    "Stock": "number"
+  "column_config": {
+    "Product": {
+      "type": "string",
+      "align": "left",
+      "fontWeight": "B",
+      "width": "40mm"
+    },
+    "Category": {
+      "type": "string",
+      "align": "center",
+      "backgroundColor": "#f0f0f0",
+      "width": "30mm"
+    },
+    "Price": {
+      "type": "price",
+      "align": "right",
+      "textColor": "#006400",
+      "width": "25mm"
+    },
+    "Stock": {
+      "type": "number",
+      "align": "center",
+      "fontWeight": "B",
+      "width": "20mm",
+      "backgroundColor": "#fff8e1"
+    }
   },
     
   "content_before": "<h2>Product Sales Summary</h2>",

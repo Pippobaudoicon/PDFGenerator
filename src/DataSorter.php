@@ -1,5 +1,7 @@
 <?php
 
+require_once(__DIR__ . '/ColumnConfig.php');
+
 /**
  * DataSorter Class
  * 
@@ -10,8 +12,8 @@ class DataSorter
     /** @var array Data to be sorted */
     private $data;
 
-    /** @var array Column types for sorting */
-    private $columnTypes = [];
+    /** @var array Column configurations */
+    private $columnConfigs = [];
 
     /**
      * Set data for sorting
@@ -36,14 +38,14 @@ class DataSorter
     }
 
     /**
-     * Set column types for sorting
+     * Set column configurations for sorting
      * 
-     * @param array $types Array of column types
+     * @param array $configs Array of ColumnConfig objects
      * @return DataSorter
      */
-    public function setColumnTypes(array $types)
+    public function setColumnConfigs(array $configs)
     {
-        $this->columnTypes = $types;
+        $this->columnConfigs = $configs;
         return $this;
     }
 
@@ -333,15 +335,15 @@ class DataSorter
     private function getColumnType($columnKey)
     {
         // Direct match by column index or name
-        if (isset($this->columnTypes[$columnKey])) {
-            return $this->columnTypes[$columnKey]['type'] ?? 'string';
+        if (isset($this->columnConfigs[$columnKey])) {
+            return $this->columnConfigs[$columnKey]->getType();
         }
 
         // If the key is a string (column name), try to find a matching column index
         if (is_string($columnKey) && isset($this->data['columns'])) {
             foreach ($this->data['columns'] as $index => $columnName) {
-                if (strcasecmp($columnName, $columnKey) === 0 && isset($this->columnTypes[$index])) {
-                    return $this->columnTypes[$index]['type'] ?? 'string';
+                if (strcasecmp($columnName, $columnKey) === 0 && isset($this->columnConfigs[$index])) {
+                    return $this->columnConfigs[$index]->getType();
                 }
             }
         }
@@ -349,8 +351,8 @@ class DataSorter
         // If the key is a numeric index, try to find a matching column name
         if (is_numeric($columnKey) && isset($this->data['columns'][$columnKey])) {
             $columnName = $this->data['columns'][$columnKey];
-            if (isset($this->columnTypes[$columnName])) {
-                return $this->columnTypes[$columnName]['type'] ?? 'string';
+            if (isset($this->columnConfigs[$columnName])) {
+                return $this->columnConfigs[$columnName]->getType();
             }
         }
 

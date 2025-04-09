@@ -41,7 +41,7 @@ try {
         'margins' => $data['margins'] ?? [15, 15, 15],
         'title_font_size' => $data['title_font_size'] ?? 16,
         'content_font_size' => $data['content_font_size'] ?? 10,
-        'format' => $data['format'] ?? 'A4', // Add format option (A4, A3, A0, etc.)
+        'format' => $data['format'] ?? 'A4',
     ];
 
     // Initialize the PDF generator
@@ -58,9 +58,9 @@ try {
         'rows' => $data['rows']
     ]);
 
-    // Set column types if provided - now supports associative arrays
-    if (isset($data['column_types'])) {
-        $generator->setColumnTypes($data['column_types']);
+    // Set column configurations if provided
+    if (isset($data['column_config'])) {
+        $generator->setColumnConfigs($data['column_config']);
     }
 
     // Table options for both grouped and non-grouped tables
@@ -148,8 +148,9 @@ try {
 
     // Generate output based on requested format
     $outputMode = $data['output_mode'] ?? 'B64'; // B64, F
-    $filename = $data['filename'] ?? '';
-
+    $strfilename = $data['filename'] ?? '';
+    $filename = $generator->setFilename($strfilename)->getFilename();
+    
     $result = $generator->output($outputMode, $filename);
 
     // Return JSON response
