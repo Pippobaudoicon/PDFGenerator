@@ -151,7 +151,7 @@ class PDFGenerator
                 $this->columnConfigs[$key] = new ColumnConfig($value);
             }
         }
-        
+
         return $this;
     }
 
@@ -186,7 +186,7 @@ class PDFGenerator
             // Otherwise create a new config
             $this->columnConfigs[$columnKey] = new ColumnConfig($config);
         }
-        
+
         return $this;
     }
 
@@ -365,13 +365,13 @@ class PDFGenerator
         foreach ($columns as $index => $column) {
             // Get column configuration for width only
             $columnConfig = $this->getColumnConfig($index);
-            
+
             // Apply only column width if specified
             $widthAttr = '';
             if ($columnConfig->getWidth() !== null) {
                 $widthAttr = ' width="' . $columnConfig->getWidth() . '"';
             }
-            
+
             // Create header cell with center alignment - always centered regardless of column config
             $html .= sprintf(
                 '<td%s style="text-align: center;">%s</td>',
@@ -393,7 +393,7 @@ class PDFGenerator
                 // Get column configuration for styling and formatting
                 $columnConfig = $this->getColumnConfig($index);
                 $styleAttr = $columnConfig->getStyleString();
-                
+
                 // Format cell value using the column configuration
                 $formattedValue = $columnConfig->formatValue($cell);
 
@@ -439,6 +439,18 @@ class PDFGenerator
         $this->pdf->SetFont('helvetica', $fontStyle, $fontSize);
         $this->pdf->writeHTML($text, true, false, true, false, '');
 
+        return $this;
+    }
+
+    /**
+     * Add spacing to the current page
+     * 
+     * @param int $spacing The amount of spacing to add in the current unit (usually mm)
+     * @return PDFGenerator
+     */
+    public function addSpacing(int $spacing = 5)
+    {
+        $this->pdf->Ln($spacing);
         return $this;
     }
 
@@ -553,7 +565,7 @@ class PDFGenerator
 
             // Add a spacer after the table (but don't call Ln on the last page to prevent errors)
             if (next($groupedData) !== false) {
-                $this->pdf->Ln(5);
+                $this->addSpacing(5);
             }
         }
 
@@ -605,8 +617,14 @@ class PDFGenerator
         $topCategoryName = $categoryColNames[0] ?? "Category";
 
         // Recursive function to process each level of the hierarchy
-        $processLevel = function($data, $level = 0, $path = [], $isFirst = true) use (
-            &$processLevel, $categoryColNames, $columns, $options, $pageOrientation, &$isFirstCategory, $hasContentBefore
+        $processLevel = function ($data, $level = 0, $path = [], $isFirst = true) use (
+            &$processLevel,
+            $categoryColNames,
+            $columns,
+            $options,
+            $pageOrientation,
+            &$isFirstCategory,
+            $hasContentBefore
         ) {
             // For the very first category:
             // If there's already content on the page (hasContentBefore=true), don't add a new page
@@ -616,7 +634,7 @@ class PDFGenerator
                     $this->addPage($pageOrientation);
                 }
                 $isFirstCategory = false;
-            } 
+            }
             // For subsequent top-level categories, always add a new page
             else if ($level === 0 && $isFirst) {
                 $this->addPage($pageOrientation);
@@ -629,33 +647,33 @@ class PDFGenerator
             foreach ($data as $category => $contents) {
                 // Build the category path for display
                 $currentPath = array_merge($path, [$category]);
-                
+
                 // Build the title for this level
                 $titlePrefix = '';
                 if (!empty($path)) {
-                    $titlePrefix = implode(' > ', $path) . ' > ';
+                    $titlePrefix = implode(' -> ', $path) . ' -> ';
                 }
-                
+
                 $title = "$currentCategoryName: $category";
                 if ($level > 0) {
                     // Only show hierarchy in title if we're beyond the first level
                     $title = "$titlePrefix$title";
                 }
-                
+
                 // If this is not a leaf node (contains more grouped data)
                 if (is_array($contents) && !isset($contents[0])) {
                     // Add title for this level
                     $this->addTitle($title);
-                    
+
                     // Process next level
                     $processLevel($contents, $level + 1, $currentPath, false);
-                } 
+                }
                 // If this is a leaf node (contains actual rows)
                 else if (is_array($contents)) {
                     // Add title and table for the leaf level
                     $this->addTitle($title);
                     $this->addTable($columns, $contents, $options);
-                    
+
                     // Add spacer after table
                     $this->pdf->Ln(5);
                 }
