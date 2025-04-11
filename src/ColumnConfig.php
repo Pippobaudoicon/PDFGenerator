@@ -32,6 +32,12 @@ class ColumnConfig
     /** @var int Column padding */
     private $padding = 1;
     
+    /** @var string|null Summary operation for this column ('sum', 'avg', 'count', 'min', 'max') */
+    private $summaryOperation = null;
+    
+    /** @var string|null Custom summary label to override default labels */
+    private $summaryLabel = null;
+    
     /** @var array Additional properties that might be added in the future */
     private $additionalProps = [];
 
@@ -293,6 +299,105 @@ class ColumnConfig
     public function getPadding()
     {
         return $this->padding;
+    }
+
+    /**
+     * Set summary operation for this column
+     * 
+     * @param string|null $operation Operation name ('sum', 'avg', 'count', 'min', 'max', null)
+     * @return ColumnConfig
+     */
+    public function setSummaryOperation($operation)
+    {
+        $validOperations = ['sum', 'avg', 'count', 'min', 'max', null];
+        
+        // Validate operation
+        if (in_array($operation, $validOperations)) {
+            $this->summaryOperation = $operation;
+        }
+        
+        return $this;
+    }
+
+    /**
+     * Get summary operation
+     * 
+     * @return string|null
+     */
+    public function getSummaryOperation()
+    {
+        return $this->summaryOperation;
+    }
+    
+    /**
+     * Set custom summary label
+     * 
+     * @param string|null $label Custom label for summary row
+     * @return ColumnConfig
+     */
+    public function setSummaryLabel($label)
+    {
+        $this->summaryLabel = $label;
+        return $this;
+    }
+
+    /**
+     * Get summary label
+     * 
+     * @return string|null
+     */
+    public function getSummaryLabel()
+    {
+        return $this->summaryLabel;
+    }
+
+    /**
+     * Calculate summary value for a column
+     * 
+     * @param array $values Array of values to calculate summary for
+     * @return mixed Calculated summary value
+     */
+    public function calculateSummaryValue(array $values)
+    {
+        // Filter out non-numeric values for numeric operations
+        $numericOperations = ['sum', 'avg', 'min', 'max'];
+        $numericValues = [];
+        
+        if (in_array($this->summaryOperation, $numericOperations)) {
+            foreach ($values as $value) {
+                // Try to extract numeric value even from formatted strings
+                if (is_string($value)) {
+                    // Remove currency symbols, commas, etc.
+                    $cleanValue = preg_replace('/[^0-9.-]/', '', $value);
+                    if (is_numeric($cleanValue)) {
+                        $numericValues[] = (float)$cleanValue;
+                    }
+                } 
+                else if (is_numeric($value)) {
+                    $numericValues[] = (float)$value;
+                }
+            }
+        }
+        
+        switch ($this->summaryOperation) {
+            case 'sum':
+                return array_sum($numericValues);
+                
+            case 'avg':
+                return count($numericValues) > 0 ? array_sum($numericValues) / count($numericValues) : 0;
+                
+            case 'count':
+                return count($values);
+                
+            case 'min':
+                return !empty($numericValues) ? min($numericValues) : null;
+                
+            case 'max':
+                return !empty($numericValues) ? max($numericValues) : null;
+                
+            default:
+                return '';
+        }
     }
 
     /**

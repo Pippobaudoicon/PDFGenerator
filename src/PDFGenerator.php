@@ -345,6 +345,10 @@ class PDFGenerator
         $border = $options['border'] ?? $this->config['table_border'];
         $padding = $options['padding'] ?? $this->config['table_padding'];
         $headerBg = $options['header_bg'] ?? '#f2f2f2';
+        $showSummary = $options['show_summary'] ?? false;
+        $summaryBg = $options['summary_bg'] ?? '#f9f9f9';
+        $summaryLabelCol = $options['summary_label_col'] ?? 0;
+        $summaryDefaultLabel = $options['summary_label'] ?? 'Total';
 
         // Set font for table content
         $this->pdf->SetFont('helvetica', '', $this->config['content_font_size']);
@@ -406,6 +410,76 @@ class PDFGenerator
             }
 
             $html .= '</tr>';
+        }
+        
+        // Add summary row if enabled
+        if ($showSummary && !empty($rows)) {
+            $hasActiveOperations = false;
+            $summaryValues = array_fill(0, count($columns), '');
+            
+            // First pass: Gather column values and calculate summaries
+            foreach ($columns as $index => $column) {
+                $columnConfig = $this->getColumnConfig($index);
+                $operation = $columnConfig->getSummaryOperation();
+                
+                // Skip if no summary operation defined for this column
+                if (empty($operation)) {
+                    continue;
+                }
+                
+                // Mark that we have at least one operation to show summary row
+                $hasActiveOperations = true;
+                
+                // Extract values for this column from all rows
+                $values = array_column($rows, $index);
+                
+                // Calculate summary value
+                $summaryValue = $columnConfig->calculateSummaryValue($values);
+                
+                // Format the summary value according to the column type
+                $formattedValue = $columnConfig->formatValue($summaryValue);
+                
+                // Get column-specific label if it exists
+                $columnLabel = $columnConfig->getSummaryLabel();
+                if ($columnLabel !== null) {
+                    // If a column has its own summary label, add it before the value
+                    $summaryValues[$index] = $columnLabel . ': ' . $formattedValue;
+                } else {
+                    // Otherwise just show the value
+                    $summaryValues[$index] = $formattedValue;
+                }
+            }
+            
+            // Add the main summary label to the designated column if it doesn't have a specific operation
+            if (empty($summaryValues[$summaryLabelCol])) {
+                $summaryValues[$summaryLabelCol] = $summaryDefaultLabel;
+            }
+            
+            // Add the summary row if any operations were performed
+            if ($hasActiveOperations) {
+                // Add summary row with slightly different background
+                $html .= sprintf(
+                    '<tr style="font-weight: bold; background-color: %s;">',
+                    $summaryBg
+                );
+                
+                foreach ($summaryValues as $index => $value) {
+                    // Get the column styles
+                    $columnConfig = $this->getColumnConfig($index);
+                    $styleAttr = $columnConfig->getStyleString();
+                    
+                    // Add font-weight to always make summary row bold
+                    $styleAttr = $styleAttr ? $styleAttr . '; font-weight: bold' : 'font-weight: bold';
+                    
+                    $html .= sprintf(
+                        '<td%s>%s</td>',
+                        $styleAttr ? ' style="' . $styleAttr . '"' : '',
+                        htmlspecialchars((string)$value)
+                    );
+                }
+                
+                $html .= '</tr>';
+            }
         }
 
         $html .= '</table>';
@@ -616,72 +690,65 @@ class PDFGenerator
         // Get category column name for the top level
         $topCategoryName = $categoryColNames[0] ?? "Category";
 
-        // Recursive function to process each level of the hierarchy
-        $processLevel = function ($data, $level = 0, $path = [], $isFirst = true) use (
-            &$processLevel,
-            $categoryColNames,
-            $columns,
-            $options,
-            $pageOrientation,
-            &$isFirstCategory,
-            $hasContentBefore
-        ) {
-            // For the very first category:
+        // Process each top-level category - add a page break for each one (except the first if hasContentBefore=true)
+        foreach ($groupedData as $topCategory => $subData) {
+            // For the first top-level category:
             // If there's already content on the page (hasContentBefore=true), don't add a new page
             // Otherwise, add the first page
-            if ($level === 0 && $isFirstCategory && $isFirst) {
+            if ($isFirstCategory) {
                 if (!$hasContentBefore) {
                     $this->addPage($pageOrientation);
                 }
                 $isFirstCategory = false;
-            }
-            // For subsequent top-level categories, always add a new page
-            else if ($level === 0 && $isFirst) {
+            } else {
+                // For subsequent top-level categories, always add a new page
                 $this->addPage($pageOrientation);
             }
 
-            // Current level's category name
-            $currentCategoryName = $categoryColNames[$level] ?? "Category";
+            // Add the top-level category title
+            $this->addTitle("$topCategoryName: $topCategory");
 
-            // For each group at this level
-            foreach ($data as $category => $contents) {
-                // Build the category path for display
-                $currentPath = array_merge($path, [$category]);
-
-                // Build the title for this level
-                $titlePrefix = '';
-                if (!empty($path)) {
-                    $titlePrefix = implode(' -> ', $path) . ' -> ';
+            // Process nested levels for this top-level category
+            $processNestedCategories = function($data, $level = 1, $path = []) use (
+                &$processNestedCategories, 
+                $categoryColNames, 
+                $columns, 
+                $options,
+                $topCategory
+            ) {
+                if (empty($data)) {
+                    return;
                 }
 
-                $title = "$currentCategoryName: $category";
-                if ($level > 0) {
-                    // Only show hierarchy in title if we're beyond the first level
-                    $title = "$titlePrefix$title";
+                $currentCategoryName = $categoryColNames[$level] ?? "Category";
+
+                foreach ($data as $category => $contents) {
+                    // Build the current path for display
+                    $currentPath = array_merge($path, [$category]);
+                    
+                    // Build the title with full path
+                    $title = "$currentCategoryName: $category";
+                    if (!empty($path)) {
+                        $title = implode(" -> ", $path) . " -> $title";
+                    }
+
+                    // Process leaf nodes (actual data) or continue recursion
+                    if (isset($contents[0])) {
+                        // This is a leaf node with rows
+                        $this->addTitle($title);
+                        $this->addTable($columns, $contents, $options);
+                        $this->pdf->Ln(5); // Add spacing after table
+                    } else {
+                        // This is an intermediate node, add title and process children
+                        $this->addTitle($title);
+                        $processNestedCategories($contents, $level + 1, $currentPath);
+                    }
                 }
+            };
 
-                // If this is not a leaf node (contains more grouped data)
-                if (is_array($contents) && !isset($contents[0])) {
-                    // Add title for this level
-                    $this->addTitle($title);
-
-                    // Process next level
-                    $processLevel($contents, $level + 1, $currentPath, false);
-                }
-                // If this is a leaf node (contains actual rows)
-                else if (is_array($contents)) {
-                    // Add title and table for the leaf level
-                    $this->addTitle($title);
-                    $this->addTable($columns, $contents, $options);
-
-                    // Add spacer after table
-                    $this->pdf->Ln(5);
-                }
-            }
-        };
-
-        // Start processing from the top level
-        $processLevel($groupedData);
+            // Process all nested categories under this top-level category
+            $processNestedCategories($subData, 1, [$topCategory]);
+        }
 
         return $this;
     }

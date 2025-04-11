@@ -69,6 +69,22 @@ try {
         'padding' => $data['table_padding'] ?? 5,
         'header_bg' => $data['header_bg'] ?? '#f2f2f2',
     ];
+    
+    // Add summary row options if present
+    if (isset($data['show_summary'])) {
+        $tableOptions['show_summary'] = $data['show_summary'];
+        
+        // Additional summary options (all optional)
+        if (isset($data['summary_bg'])) {
+            $tableOptions['summary_bg'] = $data['summary_bg'];
+        }
+        if (isset($data['summary_label_col'])) {
+            $tableOptions['summary_label_col'] = $data['summary_label_col'];
+        }
+        if (isset($data['summary_label'])) {
+            $tableOptions['summary_label'] = $data['summary_label'];
+        }
+    }
 
     // Check if we should group by category
     if (isset($data['group_by'])) {
