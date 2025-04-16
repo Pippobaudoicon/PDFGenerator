@@ -333,9 +333,10 @@ class PDFGenerator
      * @param array|null $columns Column names (if null, use from data)
      * @param array|null $rows Row data (if null, use from data)
      * @param array $options Table formatting options
+     * @param array|null $summaryConfig Summary configuration for the table
      * @return PDFGenerator
      */
-    public function addTable(array $columns = null, array $rows = null, array $options = [])
+    public function addTable(array $columns = null, array $rows = null, array $options = [], array $summaryConfig = null)
     {
         // Use provided data or fall back to stored data
         $columns = $columns ?? $this->data['columns'] ?? [];
@@ -345,10 +346,6 @@ class PDFGenerator
         $border = $options['border'] ?? $this->config['table_border'];
         $padding = $options['padding'] ?? $this->config['table_padding'];
         $headerBg = $options['header_bg'] ?? '#f2f2f2';
-        $showSummary = $options['show_summary'] ?? false;
-        $summaryBg = $options['summary_bg'] ?? '#f9f9f9';
-        $summaryLabelCol = $options['summary_label_col'] ?? 0;
-        $summaryDefaultLabel = $options['summary_label'] ?? 'Total';
 
         // Set font for table content
         $this->pdf->SetFont('helvetica', '', $this->config['content_font_size']);
@@ -412,74 +409,102 @@ class PDFGenerator
             $html .= '</tr>';
         }
         
-        // Add summary row if enabled
-        if ($showSummary && !empty($rows)) {
-            $hasActiveOperations = false;
-            $summaryValues = array_fill(0, count($columns), '');
+        // Add summary row if configured
+        if (!empty($summaryConfig) && !empty($summaryConfig['summary'])) {
+            // Process each summary column and create a summary row
+            $summaryValues = [];
+            $summaryRow = array_fill(0, count($columns), ''); // Initialize with empty values
             
-            // First pass: Gather column values and calculate summaries
-            foreach ($columns as $index => $column) {
-                $columnConfig = $this->getColumnConfig($index);
-                $operation = $columnConfig->getSummaryOperation();
-                
-                // Skip if no summary operation defined for this column
-                if (empty($operation)) {
-                    continue;
-                }
-                
-                // Mark that we have at least one operation to show summary row
-                $hasActiveOperations = true;
-                
-                // Extract values for this column from all rows
-                $values = array_column($rows, $index);
-                
-                // Calculate summary value
-                $summaryValue = $columnConfig->calculateSummaryValue($values);
-                
-                // Format the summary value according to the column type
-                $formattedValue = $columnConfig->formatValue($summaryValue);
-                
-                // Get column-specific label if it exists
-                $columnLabel = $columnConfig->getSummaryLabel();
-                if ($columnLabel !== null) {
-                    // If a column has its own summary label, add it before the value
-                    $summaryValues[$index] = $columnLabel . ': ' . $formattedValue;
-                } else {
-                    // Otherwise just show the value
-                    $summaryValues[$index] = $formattedValue;
-                }
-            }
+            // Add the summary header
+            $summaryTitle = $summaryConfig['summaryTitle'] ?? 'Summary';
+            $summaryBgColor = $summaryConfig['summaryBgColor'] ?? '#f9f9f9';
+            $summaryTextColor = $summaryConfig['summaryTextColor'] ?? '#000000';
             
-            // Add the main summary label to the designated column if it doesn't have a specific operation
-            if (empty($summaryValues[$summaryLabelCol])) {
-                $summaryValues[$summaryLabelCol] = $summaryDefaultLabel;
-            }
+            // Style the summary row
+            $html .= sprintf(
+                '<tr style="font-weight: bold; background-color: %s; color: %s;">',
+                $summaryBgColor,
+                $summaryTextColor
+            );
             
-            // Add the summary row if any operations were performed
-            if ($hasActiveOperations) {
-                // Add summary row with slightly different background
+            // First cell contains the summary title, spans multiple columns if configured
+            $titleSpan = $summaryConfig['titleSpan'] ?? 1;
+            if ($titleSpan > 1) {
                 $html .= sprintf(
-                    '<tr style="font-weight: bold; background-color: %s;">',
-                    $summaryBg
+                    '<td colspan="%d" style="text-align: left;">%s</td>',
+                    $titleSpan,
+                    htmlspecialchars($summaryTitle)
                 );
+            } else {
+                $html .= sprintf(
+                    '<td style="text-align: left;">%s</td>',
+                    htmlspecialchars($summaryTitle)
+                );
+            }
+            
+            // Skip cells that were spanned
+            for ($i = 1; $i < $titleSpan; $i++) {
+                unset($summaryRow[$i]);
+            }
+            
+            // Calculate summary values and populate the summary row
+            foreach ($summaryConfig['summary'] as $colKey => $summaryDef) {
+                // Get the column index if a name was specified
+                $colIndex = $colKey;
                 
-                foreach ($summaryValues as $index => $value) {
-                    // Get the column styles
-                    $columnConfig = $this->getColumnConfig($index);
-                    $styleAttr = $columnConfig->getStyleString();
+                if (is_string($colKey) && !is_numeric($colKey)) {
+                    $colIndex = array_search($colKey, $columns);
+                }
+                
+                if ($colIndex !== false && isset($columns[$colIndex])) {
+                    // Get the column config for formatting
+                    $columnConfig = $this->getColumnConfig($colIndex);
                     
-                    // Add font-weight to always make summary row bold
-                    $styleAttr = $styleAttr ? $styleAttr . '; font-weight: bold' : 'font-weight: bold';
+                    // Parse summary definition
+                    $operation = '';
+                    
+                    if (is_array($summaryDef)) {
+                        $operation = $summaryDef['operation'] ?? '';
+                    } else {
+                        // If just a string operation is provided
+                        $operation = $summaryDef;
+                    }
+                    
+                    if (!empty($operation)) {
+                        // Extract values for this column from all rows
+                        $values = array_column($rows, $colIndex);
+                        
+                        // Calculate summary value based on operation
+                        $summaryValue = $this->calculateSummaryValue($values, $operation);
+                        
+                        // Format the summary value according to the column type
+                        $formattedValue = $columnConfig->formatValue($summaryValue);
+                        
+                        // Add to the summary row
+                        $summaryRow[$colIndex] = $formattedValue;
+                    }
+                }
+            }
+            
+            // Add the rest of the summary row cells
+            for ($i = $titleSpan; $i < count($columns); $i++) {
+                if (isset($summaryRow[$i])) {
+                    // Get column styling
+                    $columnConfig = $this->getColumnConfig($i);
+                    $styleAttr = $columnConfig->getStyleString();
                     
                     $html .= sprintf(
                         '<td%s>%s</td>',
                         $styleAttr ? ' style="' . $styleAttr . '"' : '',
-                        htmlspecialchars((string)$value)
+                        htmlspecialchars($summaryRow[$i])
                     );
+                } else {
+                    // Empty cell
+                    $html .= '<td></td>';
                 }
-                
-                $html .= '</tr>';
             }
+            
+            $html .= '</tr>';
         }
 
         $html .= '</table>';
@@ -647,17 +672,24 @@ class PDFGenerator
     }
 
     /**
-     * Add tables grouped by multiple categories in a hierarchical manner
+     * Add tables grouped by multiple categories in a hierarchical manner with per-level configuration
      * 
      * @param array $categoryColumns Array of column indices or names to group by, in order of hierarchy
      * @param int|string|null $sortColumn Column index or name to sort by within each lowest-level category (optional)
      * @param bool $ascending Whether to sort in ascending order
      * @param array $options Table formatting options
      * @param bool $hasContentBefore Whether there is content before the first table
+     * @param array $groupConfig Optional per-level group configuration
      * @return PDFGenerator
      */
-    public function addTablesByMultipleCategories(array $categoryColumns, $sortColumn = null, bool $ascending = true, array $options = [], bool $hasContentBefore = false)
-    {
+    public function addTablesByMultipleCategories(
+        array $categoryColumns, 
+        $sortColumn = null, 
+        bool $ascending = true, 
+        array $options = [], 
+        bool $hasContentBefore = false,
+        array $groupConfig = []
+    ) {
         // Use internal DataSorter to group data by multiple categories
         $this->sorter->setData($this->data);
         $this->sorter->setColumnConfigs($this->columnConfigs);
@@ -690,66 +722,584 @@ class PDFGenerator
         // Get category column name for the top level
         $topCategoryName = $categoryColNames[0] ?? "Category";
 
-        // Process each top-level category - add a page break for each one (except the first if hasContentBefore=true)
+        // Default group configuration
+        $defaultGroupConfig = [
+            'pageBreak' => false,     // New flag to indicate if this level should start on a new page
+            'showSummary' => false,   // Whether to show summary for this group
+            'summary' => [],   // Columns to include in the summary
+            'titleFormat' => null,    // Custom format for group titles
+            'contentAfter' => null    // Text to add after each group
+        ];
+        
+        // Normalize group config to support both numeric indices and column names as keys
+        $normalizedGroupConfig = $this->normalizeGroupConfig($groupConfig, $categoryColumns);
+
+        // Always add the first page if there's no content before
+        if (!$hasContentBefore) {
+            $this->addPage($pageOrientation);
+        }
+        
+        // We'll use this to track which categories we've processed
+        $processedCategories = [];
+        
+        // Process each top-level category
         foreach ($groupedData as $topCategory => $subData) {
-            // For the first top-level category:
-            // If there's already content on the page (hasContentBefore=true), don't add a new page
-            // Otherwise, add the first page
-            if ($isFirstCategory) {
-                if (!$hasContentBefore) {
-                    $this->addPage($pageOrientation);
-                }
-                $isFirstCategory = false;
-            } else {
-                // For subsequent top-level categories, always add a new page
+            // Get top-level group configuration
+            $topLevelConfig = isset($normalizedGroupConfig[0]) ? 
+                array_merge($defaultGroupConfig, $normalizedGroupConfig[0]) : $defaultGroupConfig;
+            
+            // Add page break for top-level categories after the first one
+            // (unless the category specifies no page break)
+            if (!$isFirstCategory && !empty($topLevelConfig['pageBreak'])) {
                 $this->addPage($pageOrientation);
             }
+            
+            // First category doesn't need a page break since we already added one
+            $isFirstCategory = false;
 
             // Add the top-level category title
-            $this->addTitle("$topCategoryName: $topCategory");
+            $title = $topCategoryName . ": " . $topCategory;
+            if (isset($topLevelConfig['titleFormat']) && is_callable($topLevelConfig['titleFormat'])) {
+                $title = call_user_func($topLevelConfig['titleFormat'], $topCategoryName, $topCategory);
+            }
+            $this->addTitle($title);
 
-            // Process nested levels for this top-level category
-            $processNestedCategories = function($data, $level = 1, $path = []) use (
-                &$processNestedCategories, 
+            // Extract all rows from this top-level category for summary calculation
+            $allRowsInCategory = $this->extractAllRowsFromNestedData($subData);
+
+            // Process the hierarchical data with the enhanced path tracking
+            $this->renderNestedCategories(
+                $subData, 
+                1, 
+                [$topCategory], 
                 $categoryColNames, 
                 $columns, 
-                $options,
-                $topCategory
-            ) {
-                if (empty($data)) {
-                    return;
+                $options, 
+                $normalizedGroupConfig, 
+                $defaultGroupConfig,
+                $processedCategories  // Track processed categories
+            );
+            
+            // If top level has summary configuration, add summary for all data in this top-level category
+            if ($topLevelConfig['showSummary'] && !empty($topLevelConfig['summary'])) {
+                // Add a group summary for the top-level category
+                $this->addGroupSummary($allRowsInCategory, $columns, $topLevelConfig);
+            }
+            
+            // Add custom content after top-level group if specified
+            if (!empty($topLevelConfig['contentAfter'])) {
+                if (is_callable($topLevelConfig['contentAfter'])) {
+                    $contentText = call_user_func($topLevelConfig['contentAfter'], $topCategory, $allRowsInCategory, []);
+                } else {
+                    $contentText = $topLevelConfig['contentAfter'];
                 }
-
-                $currentCategoryName = $categoryColNames[$level] ?? "Category";
-
-                foreach ($data as $category => $contents) {
-                    // Build the current path for display
-                    $currentPath = array_merge($path, [$category]);
-                    
-                    // Build the title with full path
-                    $title = "$currentCategoryName: $category";
-                    if (!empty($path)) {
-                        $title = implode(" -> ", $path) . " -> $title";
-                    }
-
-                    // Process leaf nodes (actual data) or continue recursion
-                    if (isset($contents[0])) {
-                        // This is a leaf node with rows
-                        $this->addTitle($title);
-                        $this->addTable($columns, $contents, $options);
-                        $this->pdf->Ln(5); // Add spacing after table
-                    } else {
-                        // This is an intermediate node, add title and process children
-                        $this->addTitle($title);
-                        $processNestedCategories($contents, $level + 1, $currentPath);
-                    }
-                }
-            };
-
-            // Process all nested categories under this top-level category
-            $processNestedCategories($subData, 1, [$topCategory]);
+                $this->addText($contentText);
+            }
         }
 
         return $this;
+    }
+
+    /**
+     * Normalize group configuration to support both numeric indices and column names as keys
+     * 
+     * @param array $groupConfig The original group configuration
+     * @param array $categoryColumns The column indices or names for grouping
+     * @return array Normalized group configuration with numeric indices
+     */
+    private function normalizeGroupConfig(array $groupConfig, array $categoryColumns)
+    {
+        $normalized = [];
+        $columns = $this->data['columns'] ?? [];
+        
+        // First pass: handle column name keys at the top level
+        foreach ($groupConfig as $key => $config) {
+            $index = $key;
+            
+            // If the key is a string, try to match it against the category columns
+            if (is_string($key) && !is_numeric($key)) {
+                $found = false;
+                foreach ($categoryColumns as $idx => $colName) {
+                    if (strcasecmp($key, $colName) === 0) {
+                        $index = $idx;
+                        $found = true;
+                        break;
+                    }
+                }
+                
+                if (!$found) {
+                    // It might be a column name not in the category columns - leave it as is
+                    // This helps maintain backward compatibility
+                    $index = $key;
+                }
+            }
+            
+            $normalized[$index] = $config;
+        }
+        
+        return $normalized;
+    }
+
+    /**
+     * Extract all leaf rows from nested grouped data structure
+     * 
+     * @param array $nestedData Nested data from grouping
+     * @return array Flattened array of all rows
+     */
+    private function extractAllRowsFromNestedData($nestedData)
+    {
+        $allRows = [];
+        
+        if (empty($nestedData)) {
+            return $allRows;
+        }
+        
+        // Check if this is already a leaf node (array of rows)
+        if (isset($nestedData[0]) && is_array($nestedData[0])) {
+            return $nestedData;
+        }
+        
+        // Otherwise, this is a branch node, so traverse all children
+        foreach ($nestedData as $category => $contents) {
+            if (isset($contents[0]) && is_array($contents[0])) {
+                // This is a leaf node, add all rows
+                $allRows = array_merge($allRows, $contents);
+            } else {
+                // This is another branch, recursively extract rows
+                $childRows = $this->extractAllRowsFromNestedData($contents);
+                $allRows = array_merge($allRows, $childRows);
+            }
+        }
+        
+        return $allRows;
+    }
+
+    /**
+     * Add a summary table for a group of data
+     * 
+     * @param array $rows The rows to calculate summary for
+     * @param array $columns Column names
+     * @param array $groupConfig Group configuration
+     */
+    private function addGroupSummary($rows, $columns, $groupConfig)
+    {
+        // Skip if no data or no summary columns specified
+        if (empty($rows) || empty($groupConfig['summary'])) {
+            return;
+        }
+        
+        // Create summary options
+        $summaryTitle = $groupConfig['summaryTitle'] ?? 'Summary';
+        $titleFontSize = $groupConfig['summaryTitleFontSize'] ?? 14;
+        $summaryTextFormat = $groupConfig['summaryTextFormat'] ?? '{label}: {value}';
+        $summaryTextSeparator = '<br>'; // Always use <br> instead of comma
+        
+        $summaryValues = []; // Store calculated summary values for text summary
+        
+        // Process each summary column
+        foreach ($groupConfig['summary'] as $colKey => $summaryDef) {
+            // Get the column index if a name was specified
+            $colIndex = $colKey;
+            $colName = $colKey;
+            
+            if (is_string($colKey) && !is_numeric($colKey)) {
+                $colIndex = array_search($colKey, $columns);
+                $colName = $colKey;
+            } else if (is_numeric($colKey) && isset($columns[$colKey])) {
+                $colName = $columns[$colKey];
+            }
+            
+            if ($colIndex !== false) {
+                // Get the column config
+                $columnConfig = $this->getColumnConfig($colIndex);
+                
+                // Parse summary definition
+                $operation = '';
+                $label = '';
+                
+                if (is_array($summaryDef)) {
+                    $operation = $summaryDef['operation'] ?? '';
+                    $label = $summaryDef['label'] ?? '';
+                } else {
+                    // If just a string operation is provided
+                    $operation = $summaryDef;
+                }
+                
+                if (!empty($operation)) {
+                    // Extract values for this column from all rows
+                    $values = array_column($rows, $colIndex);
+                    
+                    // Calculate summary value based on operation
+                    $summaryValue = $this->calculateSummaryValue($values, $operation);
+                    
+                    // Format the summary value according to the column type
+                    $formattedValue = $columnConfig->formatValue($summaryValue);
+                    
+                    // Use the provided label or default to column name
+                    $summaryLabel = $label ?: $colName;
+                    
+                    // Store for text summary
+                    $summaryValues[$colName] = [
+                        'label' => $summaryLabel,
+                        'value' => $formattedValue,
+                        'operation' => $operation
+                    ];
+                }
+            }
+        }
+        
+        // Add a title for the summary if specified
+        if (!empty($groupConfig['summaryTitle'])) {
+            $this->addTitle($summaryTitle, $titleFontSize);
+        }
+        
+        // Format summary values into text
+        $textParts = [];
+        foreach ($summaryValues as $colName => $data) {
+            $textParts[] = str_replace(
+                ['{label}', '{value}', '{column}', '{operation}'], 
+                [$data['label'], $data['value'], $colName, $data['operation']], 
+                $summaryTextFormat
+            );
+        }
+        
+        // Combine into a complete summary text
+        $summaryText = implode($summaryTextSeparator, $textParts);
+        
+        // Apply custom text formatting if provided
+        if (isset($groupConfig['summaryTextStyle'])) {
+            $style = $groupConfig['summaryTextStyle'];
+            if (is_array($style)) {
+                // Apply HTML formatting
+                $bgColor = $style['bgColor'] ?? '';
+                $textColor = $style['textColor'] ?? '';
+                $fontWeight = $style['fontWeight'] ?? '';
+                $fontSize = $style['fontSize'] ?? '';
+                $fontStyle = $style['fontStyle'] ?? '';
+                
+                $styleAttr = [];
+                if ($bgColor) $styleAttr[] = "background-color: $bgColor";
+                if ($textColor) $styleAttr[] = "color: $textColor";
+                if ($fontWeight) $styleAttr[] = "font-weight: $fontWeight";
+                if ($fontSize) $styleAttr[] = "font-size: $fontSize";
+                if ($fontStyle) $styleAttr[] = "font-style: $fontStyle";
+                
+                if (!empty($styleAttr)) {
+                    $summaryText = '<div style="' . implode('; ', $styleAttr) . '">' . $summaryText . '</div>';
+                }
+            }
+        }
+        
+        // Add summary as text
+        $this->addText($summaryText);
+    }
+
+    /**
+     * Calculate summary value for a set of values and operation
+     * 
+     * @param array $values Array of values to calculate summary for
+     * @param string $operation The operation to perform (sum, avg, count, min, max)
+     * @return mixed Calculated summary value
+     */
+    private function calculateSummaryValue(array $values, $operation)
+    {
+        // Filter out non-numeric values for numeric operations
+        $numericOperations = ['sum', 'avg', 'min', 'max'];
+        $numericValues = [];
+        
+        if (in_array($operation, $numericOperations)) {
+            foreach ($values as $value) {
+                // Try to extract numeric value even from formatted strings
+                if (is_string($value)) {
+                    // Remove currency symbols, commas, etc.
+                    $cleanValue = preg_replace('/[^0-9.-]/', '', $value);
+                    if (is_numeric($cleanValue)) {
+                        $numericValues[] = (float)$cleanValue;
+                    }
+                } 
+                else if (is_numeric($value)) {
+                    $numericValues[] = (float)$value;
+                }
+            }
+        }
+        
+        switch ($operation) {
+            case 'sum':
+                return array_sum($numericValues);
+                
+            case 'avg':
+                return count($numericValues) > 0 ? array_sum($numericValues) / count($numericValues) : 0;
+                
+            case 'count':
+                return count($values);
+                
+            case 'min':
+                return !empty($numericValues) ? min($numericValues) : null;
+                
+            case 'max':
+                return !empty($numericValues) ? max($numericValues) : null;
+                
+            default:
+                return '';
+        }
+    }
+
+    /**
+     * Process nested categories for multi-level grouping with clean page break handling
+     * 
+     * @param array $data Nested data to process
+     * @param int $level Current nesting level
+     * @param array $path Current path in the category hierarchy
+     * @param array $categoryColNames Category column names for display
+     * @param array $columns Data columns
+     * @param array $options Table formatting options
+     * @param array $normalizedGroupConfig Normalized group configuration
+     * @param array $defaultGroupConfig Default group configuration
+     * @param array $processedCategories Track processed categories
+     * @return bool Whether any content was actually rendered
+     */
+    private function renderNestedCategories(
+        $data, 
+        $level, 
+        $path, 
+        &$categoryColNames, 
+        $columns, 
+        $options,
+        $normalizedGroupConfig,
+        $defaultGroupConfig,
+        &$processedCategories
+    ) {
+        if (empty($data)) {
+            return false;
+        }
+
+        // Get configuration for this level
+        $levelConfig = isset($normalizedGroupConfig[$level]) ? 
+            array_merge($defaultGroupConfig, $normalizedGroupConfig[$level]) : 
+            $defaultGroupConfig;
+
+        $currentCategoryName = $categoryColNames[$level] ?? "Category";
+        
+        // Track if any content was rendered at this level
+        $contentRendered = false;
+        
+        // This level's full path key (used to track if we need a page break)
+        $pathKey = implode(':', $path);
+        $isFirstItemAtThisLevel = !isset($processedCategories[$level]) || !isset($processedCategories[$level][$pathKey]);
+        
+        // Initialize the tracking for this level and path if needed
+        if (!isset($processedCategories[$level])) {
+            $processedCategories[$level] = [];
+        }
+        if (!isset($processedCategories[$level][$pathKey])) {
+            $processedCategories[$level][$pathKey] = 0;
+        }
+
+        foreach ($data as $category => $contents) {
+            // Build the current path for display
+            $currentPath = array_merge($path, [$category]);
+            $currentPathKey = implode(':', $currentPath);
+            
+            // Check if this is a leaf node with actual data or an intermediate node
+            $isLeafNode = isset($contents[0]) && is_array($contents[0]);
+            
+            // Check if there's actual content in this node (either direct rows or nested data)
+            $hasContent = $isLeafNode ? !empty($contents) : $this->hasContentInNestedData($contents);
+            
+            // Skip entirely if there's no actual content
+            if (!$hasContent) {
+                continue;
+            }
+            
+            // Decide if we need a page break for this category
+            $needsPageBreak = !$isFirstItemAtThisLevel && !empty($levelConfig['pageBreak']);
+            if ($needsPageBreak) {
+                $this->addPage();
+                
+                // After a page break, we'll show a simple title without the full path
+                $simplePath = [];
+            } else {
+                // If no page break, use normal path
+                $simplePath = $path;
+            }
+            
+            // Build the title
+            if ($needsPageBreak) {
+                // Simplified title after page break (no hierarchy)
+                $title = "$currentCategoryName: $category";
+            } else {
+                // Normal title with full path
+                if (!empty($simplePath)) {
+                    if (isset($levelConfig['titleFormat']) && is_callable($levelConfig['titleFormat'])) {
+                        $title = call_user_func($levelConfig['titleFormat'], $currentCategoryName, $category, $simplePath);
+                    } else {
+                        $title = implode(" -> ", $simplePath) . " -> $currentCategoryName: $category";
+                    }
+                } else {
+                    if (isset($levelConfig['titleFormat']) && is_callable($levelConfig['titleFormat'])) {
+                        $title = call_user_func($levelConfig['titleFormat'], $currentCategoryName, $category);
+                    } else {
+                        $title = "$currentCategoryName: $category";
+                    }
+                }
+            }
+            
+            // Add the title for this group
+            $this->addTitle($title);
+            
+            // Process leaf nodes (actual data) or continue recursion
+            if ($isLeafNode) {
+                // This is a leaf node with rows (actual data)
+                
+                // Check if this level has table summary configuration
+                $tableSummaryConfig = null;
+                if (!empty($levelConfig['tableSummary']) && !empty($levelConfig['summary'])) {
+                    $tableSummaryConfig = [
+                        'summaryTitle' => $levelConfig['tableSummaryTitle'] ?? 'Total',
+                        'summaryBgColor' => $levelConfig['tableSummaryBgColor'] ?? '#f2f2f2',
+                        'summaryTextColor' => $levelConfig['tableSummaryTextColor'] ?? '#000000',
+                        'titleSpan' => $levelConfig['tableSummaryTitleSpan'] ?? 1,
+                        'summary' => $levelConfig['summary']
+                    ];
+                }
+                
+                // Add the table with the rows and summary if configured
+                $this->addTable($columns, $contents, $options, $tableSummaryConfig);
+                
+                // If this level has text summary configuration, add it after the table
+                if ($levelConfig['showSummary'] && !empty($levelConfig['summary'])) {
+                    $this->addGroupSummary($contents, $columns, $levelConfig);
+                }
+                
+                // Add custom content after the table if specified
+                if (!empty($levelConfig['contentAfter'])) {
+                    if (is_callable($levelConfig['contentAfter'])) {
+                        $contentText = call_user_func($levelConfig['contentAfter'], $category, $contents, $currentPath);
+                    } else {
+                        $contentText = $levelConfig['contentAfter'];
+                    }
+                    $this->addText($contentText);
+                }
+                
+                $this->pdf->Ln(5); // Add spacing after table
+                $contentRendered = true;
+            } else {
+                // This is an intermediate node with child categories
+                
+                // Extract all rows from this level for summary calculation
+                $allRowsInLevel = $this->extractAllRowsFromNestedData($contents);
+                
+                // Process all nested categories and track if content was rendered
+                $childContentRendered = $this->renderNestedCategories(
+                    $contents, 
+                    $level + 1, 
+                    $currentPath, 
+                    $categoryColNames, 
+                    $columns, 
+                    $options, 
+                    $normalizedGroupConfig, 
+                    $defaultGroupConfig,
+                    $processedCategories
+                );
+                
+                // Only show summary and content after if child content was actually rendered
+                if ($childContentRendered) {
+                    // Show summary for this branch if configured 
+                    if ($levelConfig['showSummary'] && !empty($levelConfig['summary'])) {
+                        $this->addGroupSummary($allRowsInLevel, $columns, $levelConfig);
+                    }
+                    
+                    // Add custom content after the group if specified
+                    if (!empty($levelConfig['contentAfter'])) {
+                        if (is_callable($levelConfig['contentAfter'])) {
+                            $contentText = call_user_func($levelConfig['contentAfter'], $category, $allRowsInLevel, $currentPath);
+                        } else {
+                            $contentText = $levelConfig['contentAfter'];
+                        }
+                        $this->addText($contentText);
+                    }
+                    
+                    $contentRendered = true;
+                }
+            }
+            
+            // Update that we've processed this item
+            $processedCategories[$level][$pathKey]++;
+            $isFirstItemAtThisLevel = false;
+        }
+        
+        return $contentRendered;
+    }
+
+    /**
+     * Check if there is any actual content in nested data structure
+     * 
+     * @param array $nestedData Nested data structure to check
+     * @return bool True if there is actual content, false otherwise
+     */
+    private function hasContentInNestedData($nestedData)
+    {
+        if (empty($nestedData)) {
+            return false;
+        }
+        
+        // If this is a leaf node with rows, check if there are any rows
+        if (isset($nestedData[0]) && is_array($nestedData[0])) {
+            return !empty($nestedData);
+        }
+        
+        // Otherwise, recursively check each child
+        foreach ($nestedData as $category => $contents) {
+            if ($this->hasContentInNestedData($contents)) {
+                return true;
+            }
+        }
+        
+        // No content found
+        return false;
+    }
+
+    /**
+     * Check if any lower level has newPage=true in the group config
+     * 
+     * @param array $normalizedGroupConfig The normalized group configuration
+     * @param int $currentLevel The current level to check from
+     * @return bool True if any lower level has newPage=true, false otherwise
+     */
+    private function hasLowerLevelPageBreak($normalizedGroupConfig, $currentLevel)
+    {
+        // Check all levels higher than the current level
+        foreach ($normalizedGroupConfig as $level => $config) {
+            // Only check levels higher than the current one
+            if ($level > $currentLevel && isset($config['newPage']) && $config['newPage'] === true) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if a group has any direct content (tables)
+     * This helps determine if we should show group titles for intermediate nodes
+     * 
+     * @param array $nestedData Nested data structure to check
+     * @return bool True if there are any direct tables in this group
+     */
+    private function hasDirectContent($nestedData)
+    {
+        if (empty($nestedData)) {
+            return false;
+        }
+        
+        // Check if any direct children are leaf nodes (tables)
+        foreach ($nestedData as $category => $contents) {
+            if (isset($contents[0]) && is_array($contents[0])) {
+                return true;  // Found a direct table
+            }
+        }
+        
+        // No direct tables found at this level
+        return false;
     }
 }

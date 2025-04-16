@@ -117,13 +117,20 @@ try {
 
         // Check if we're using multi-level grouping (array of columns) or single category
         if (is_array($groupByColumn) && count($groupByColumn) > 1) {
+            // Get group level configurations if present
+            $groupConfig = [];
+            if (isset($data['group_config'])) {
+                $groupConfig = $data['group_config'];
+            }
+            
             // Multi-level grouping with multiple columns
             $generator->addTablesByMultipleCategories(
                 $groupByColumn,
                 $sortColumn,
                 $sortAscending,
                 $tableOptions,
-                $hasContentBefore
+                $hasContentBefore,
+                $groupConfig
             );
         } else {
             // Single-level grouping (backward compatibility)
@@ -145,7 +152,7 @@ try {
         // Check if we should add content after all tables
         if (isset($data['content_after'])) {
             // Add a new page for content after
-            $generator->addPage($pageOrientation);
+            // $generator->addPage($pageOrientation);
             $generator->addText($data['content_after']);
         }
     } else {

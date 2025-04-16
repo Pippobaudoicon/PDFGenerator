@@ -1,58 +1,1259 @@
 {
-  "title": "Products Report",
-  "orientation": "L",
-  "author": "Sales Department",
-  "margins": [10, 15, 10],
-
-  "columns": ["Product", "Category", "Price", "Stock"],
-  "rows": [
-    ["Product A", "Electronics", 299.99, 45],
-    ["Product B", "Furniture", 199.50, 12],
-    ["Product C", "Electronics", 99.99, 200],
-    ["Product D", "Clothing", 49.99, 75],
-    ["Product E", "Furniture", 399.99, 8],
-    ["Product F", "Clothing", 29.99, 150]
-  ],
-  
-  "column_config": {
-    "Product": {
-      "type": "string",
-      "align": "left",
-      "fontWeight": "B",
-      "width": "40mm"
+    "title": "Report PDF Test",
+    "author": "Tommaso Lo Piparo",
+    "orientation": "L",
+    "format": "A0",
+    "margins": [
+        15,
+        15,
+        15
+    ],
+    "title_font_size": 16,
+    "content_font_size": 10,
+    "filename": "report_test",
+    "output_mode": "F",
+    "content_before": "<h1>TEST REPORT MOCK-DATA</h1><p>This report demonstrates advanced grouping and summary features with group-level configurations.</p>",
+    "content_after": "<h2>TEST REPORT TESTO FINALE</h2><p>This report was automatically generated on April 15, 2025 and contains sample data for demonstration purposes only.</p>",
+    "table_border": 1,
+    "table_padding": 5,
+    "header_bg": "#3498db",
+    "columns": [
+        "Transazione",
+        "Data",
+        "Negozio",
+        "Reparto",
+        "Marchio",
+        "Articolo",
+        "Qta",
+        "Prezzo vendita",
+        "Totale"
+    ],
+    "rows": [
+        [
+            "1001",
+            "2025-04-03",
+            "C",
+            "RUNNING",
+            "ASICS",
+            "183210",
+            1,
+            120,
+            120
+        ],
+        [
+            "1002",
+            "2025-04-04",
+            "C",
+            "BASKET",
+            "JORDAN",
+            "183211",
+            3,
+            110,
+            330
+        ],
+        [
+            "1003",
+            "2025-04-02",
+            "C",
+            "BASKET",
+            "JORDAN",
+            "183212",
+            3,
+            100,
+            300
+        ],
+        [
+            "1004",
+            "2025-04-01",
+            "B",
+            "TENNIS",
+            "HEAD",
+            "183213",
+            2,
+            95,
+            190
+        ],
+        [
+            "1005",
+            "2025-04-08",
+            "C",
+            "RUNNING",
+            "NIKE",
+            "183214",
+            3,
+            110,
+            330
+        ],
+        [
+            "1006",
+            "2025-04-10",
+            "B",
+            "BASKET",
+            "JORDAN",
+            "183215",
+            1,
+            110,
+            110
+        ],
+        [
+            "1007",
+            "2025-04-01",
+            "C",
+            "RUNNING",
+            "NIKE",
+            "183216",
+            1,
+            100,
+            100
+        ],
+        [
+            "1008",
+            "2025-04-07",
+            "C",
+            "TENNIS",
+            "WILSON",
+            "183217",
+            2,
+            90,
+            180
+        ],
+        [
+            "1009",
+            "2025-04-03",
+            "B",
+            "RUNNING",
+            "ASICS",
+            "183218",
+            1,
+            130,
+            130
+        ],
+        [
+            "1010",
+            "2025-04-05",
+            "A",
+            "TENNIS",
+            "HEAD",
+            "183219",
+            2,
+            110,
+            220
+        ],
+        [
+            "1011",
+            "2025-04-05",
+            "A",
+            "RUNNING",
+            "NIKE",
+            "183220",
+            3,
+            100,
+            300
+        ],
+        [
+            "1012",
+            "2025-04-07",
+            "C",
+            "RUNNING",
+            "NIKE",
+            "183221",
+            3,
+            95,
+            285
+        ],
+        [
+            "1013",
+            "2025-04-11",
+            "B",
+            "RUNNING",
+            "ASICS",
+            "183222",
+            2,
+            95,
+            190
+        ],
+        [
+            "1014",
+            "2025-04-07",
+            "C",
+            "CALCIO",
+            "ADIDAS",
+            "183223",
+            2,
+            110,
+            220
+        ],
+        [
+            "1015",
+            "2025-04-05",
+            "A",
+            "CALCIO",
+            "PUMA",
+            "183224",
+            1,
+            150,
+            150
+        ],
+        [
+            "1016",
+            "2025-04-03",
+            "B",
+            "TENNIS",
+            "WILSON",
+            "183225",
+            1,
+            95,
+            95
+        ],
+        [
+            "1017",
+            "2025-04-11",
+            "B",
+            "BASKET",
+            "JORDAN",
+            "183226",
+            1,
+            90,
+            90
+        ],
+        [
+            "1018",
+            "2025-04-05",
+            "A",
+            "RUNNING",
+            "NIKE",
+            "183227",
+            1,
+            95,
+            95
+        ],
+        [
+            "1019",
+            "2025-04-05",
+            "C",
+            "TENNIS",
+            "HEAD",
+            "183228",
+            1,
+            100,
+            100
+        ],
+        [
+            "1020",
+            "2025-04-04",
+            "C",
+            "RUNNING",
+            "NIKE",
+            "183229",
+            2,
+            90,
+            180
+        ],
+        [
+            "1021",
+            "2025-04-05",
+            "A",
+            "TENNIS",
+            "WILSON",
+            "183230",
+            1,
+            120,
+            120
+        ],
+        [
+            "1022",
+            "2025-04-04",
+            "C",
+            "CALCIO",
+            "ADIDAS",
+            "183231",
+            2,
+            110,
+            220
+        ],
+        [
+            "1023",
+            "2025-04-11",
+            "C",
+            "CALCIO",
+            "ADIDAS",
+            "183232",
+            3,
+            120,
+            360
+        ],
+        [
+            "1024",
+            "2025-04-09",
+            "A",
+            "BASKET",
+            "JORDAN",
+            "183233",
+            2,
+            80,
+            160
+        ],
+        [
+            "1025",
+            "2025-04-11",
+            "B",
+            "BASKET",
+            "NIKE",
+            "183234",
+            1,
+            150,
+            150
+        ],
+        [
+            "1026",
+            "2025-04-07",
+            "C",
+            "RUNNING",
+            "NIKE",
+            "183235",
+            2,
+            90,
+            180
+        ],
+        [
+            "1027",
+            "2025-04-11",
+            "B",
+            "RUNNING",
+            "ASICS",
+            "183236",
+            2,
+            80,
+            160
+        ],
+        [
+            "1028",
+            "2025-04-10",
+            "A",
+            "BASKET",
+            "JORDAN",
+            "183237",
+            1,
+            80,
+            80
+        ],
+        [
+            "1029",
+            "2025-04-09",
+            "B",
+            "BASKET",
+            "JORDAN",
+            "183238",
+            1,
+            150,
+            150
+        ],
+        [
+            "1030",
+            "2025-04-05",
+            "B",
+            "CALCIO",
+            "ADIDAS",
+            "183239",
+            2,
+            120,
+            240
+        ],
+        [
+            "1031",
+            "2025-04-09",
+            "A",
+            "CALCIO",
+            "PUMA",
+            "183240",
+            3,
+            95,
+            285
+        ],
+        [
+            "1032",
+            "2025-04-10",
+            "B",
+            "TENNIS",
+            "WILSON",
+            "183241",
+            3,
+            110,
+            330
+        ],
+        [
+            "1033",
+            "2025-04-06",
+            "B",
+            "TENNIS",
+            "HEAD",
+            "183242",
+            1,
+            95,
+            95
+        ],
+        [
+            "1034",
+            "2025-04-11",
+            "A",
+            "TENNIS",
+            "WILSON",
+            "183243",
+            3,
+            90,
+            270
+        ],
+        [
+            "1035",
+            "2025-04-11",
+            "B",
+            "TENNIS",
+            "HEAD",
+            "183244",
+            1,
+            120,
+            120
+        ],
+        [
+            "1036",
+            "2025-04-11",
+            "C",
+            "TENNIS",
+            "HEAD",
+            "183245",
+            1,
+            100,
+            100
+        ],
+        [
+            "1037",
+            "2025-04-05",
+            "C",
+            "TENNIS",
+            "WILSON",
+            "183246",
+            3,
+            150,
+            450
+        ],
+        [
+            "1038",
+            "2025-04-03",
+            "C",
+            "BASKET",
+            "JORDAN",
+            "183247",
+            3,
+            150,
+            450
+        ],
+        [
+            "1039",
+            "2025-04-11",
+            "C",
+            "RUNNING",
+            "NIKE",
+            "183248",
+            1,
+            110,
+            110
+        ],
+        [
+            "1040",
+            "2025-04-03",
+            "A",
+            "RUNNING",
+            "ASICS",
+            "183249",
+            3,
+            90,
+            270
+        ],
+        [
+            "1041",
+            "2025-04-04",
+            "A",
+            "TENNIS",
+            "HEAD",
+            "183250",
+            2,
+            130,
+            260
+        ],
+        [
+            "1042",
+            "2025-04-01",
+            "A",
+            "CALCIO",
+            "PUMA",
+            "183251",
+            2,
+            130,
+            260
+        ],
+        [
+            "1043",
+            "2025-04-02",
+            "C",
+            "CALCIO",
+            "ADIDAS",
+            "183252",
+            2,
+            80,
+            160
+        ],
+        [
+            "1044",
+            "2025-04-02",
+            "B",
+            "RUNNING",
+            "NIKE",
+            "183253",
+            1,
+            150,
+            150
+        ],
+        [
+            "1045",
+            "2025-04-11",
+            "A",
+            "BASKET",
+            "NIKE",
+            "183254",
+            2,
+            150,
+            300
+        ],
+        [
+            "1046",
+            "2025-04-08",
+            "B",
+            "BASKET",
+            "JORDAN",
+            "183255",
+            2,
+            95,
+            190
+        ],
+        [
+            "1047",
+            "2025-04-08",
+            "C",
+            "CALCIO",
+            "PUMA",
+            "183256",
+            3,
+            130,
+            390
+        ],
+        [
+            "1048",
+            "2025-04-10",
+            "C",
+            "BASKET",
+            "NIKE",
+            "183257",
+            1,
+            150,
+            150
+        ],
+        [
+            "1049",
+            "2025-04-11",
+            "A",
+            "BASKET",
+            "JORDAN",
+            "183258",
+            2,
+            90,
+            180
+        ],
+        [
+            "1050",
+            "2025-04-02",
+            "B",
+            "TENNIS",
+            "WILSON",
+            "183259",
+            1,
+            120,
+            120
+        ],
+        [
+            "1051",
+            "2025-04-02",
+            "C",
+            "CALCIO",
+            "ADIDAS",
+            "183260",
+            2,
+            120,
+            240
+        ],
+        [
+            "1052",
+            "2025-04-04",
+            "A",
+            "TENNIS",
+            "WILSON",
+            "183261",
+            3,
+            95,
+            285
+        ],
+        [
+            "1053",
+            "2025-04-09",
+            "C",
+            "TENNIS",
+            "WILSON",
+            "183262",
+            3,
+            80,
+            240
+        ],
+        [
+            "1054",
+            "2025-04-08",
+            "B",
+            "BASKET",
+            "JORDAN",
+            "183263",
+            3,
+            150,
+            450
+        ],
+        [
+            "1055",
+            "2025-04-02",
+            "C",
+            "BASKET",
+            "NIKE",
+            "183264",
+            1,
+            110,
+            110
+        ],
+        [
+            "1056",
+            "2025-04-04",
+            "C",
+            "BASKET",
+            "JORDAN",
+            "183265",
+            3,
+            150,
+            450
+        ],
+        [
+            "1057",
+            "2025-04-06",
+            "B",
+            "BASKET",
+            "NIKE",
+            "183266",
+            3,
+            120,
+            360
+        ],
+        [
+            "1058",
+            "2025-04-01",
+            "B",
+            "BASKET",
+            "JORDAN",
+            "183267",
+            2,
+            100,
+            200
+        ],
+        [
+            "1059",
+            "2025-04-07",
+            "A",
+            "CALCIO",
+            "PUMA",
+            "183268",
+            1,
+            130,
+            130
+        ],
+        [
+            "1060",
+            "2025-04-10",
+            "B",
+            "BASKET",
+            "JORDAN",
+            "183269",
+            2,
+            90,
+            180
+        ],
+        [
+            "1061",
+            "2025-04-04",
+            "A",
+            "BASKET",
+            "NIKE",
+            "183270",
+            3,
+            120,
+            360
+        ],
+        [
+            "1062",
+            "2025-04-03",
+            "A",
+            "TENNIS",
+            "HEAD",
+            "183271",
+            1,
+            130,
+            130
+        ],
+        [
+            "1063",
+            "2025-04-04",
+            "C",
+            "TENNIS",
+            "WILSON",
+            "183272",
+            2,
+            90,
+            180
+        ],
+        [
+            "1064",
+            "2025-04-06",
+            "B",
+            "BASKET",
+            "JORDAN",
+            "183273",
+            3,
+            95,
+            285
+        ],
+        [
+            "1065",
+            "2025-04-03",
+            "A",
+            "TENNIS",
+            "WILSON",
+            "183274",
+            2,
+            100,
+            200
+        ],
+        [
+            "1066",
+            "2025-04-06",
+            "C",
+            "CALCIO",
+            "PUMA",
+            "183275",
+            2,
+            100,
+            200
+        ],
+        [
+            "1067",
+            "2025-04-09",
+            "C",
+            "TENNIS",
+            "WILSON",
+            "183276",
+            2,
+            80,
+            160
+        ],
+        [
+            "1068",
+            "2025-04-10",
+            "B",
+            "TENNIS",
+            "WILSON",
+            "183277",
+            1,
+            110,
+            110
+        ],
+        [
+            "1069",
+            "2025-04-07",
+            "A",
+            "RUNNING",
+            "ASICS",
+            "183278",
+            3,
+            150,
+            450
+        ],
+        [
+            "1070",
+            "2025-04-09",
+            "B",
+            "BASKET",
+            "NIKE",
+            "183279",
+            1,
+            110,
+            110
+        ],
+        [
+            "1071",
+            "2025-04-06",
+            "C",
+            "TENNIS",
+            "HEAD",
+            "183280",
+            1,
+            80,
+            80
+        ],
+        [
+            "1072",
+            "2025-04-03",
+            "A",
+            "CALCIO",
+            "PUMA",
+            "183281",
+            1,
+            90,
+            90
+        ],
+        [
+            "1073",
+            "2025-04-02",
+            "A",
+            "BASKET",
+            "NIKE",
+            "183282",
+            2,
+            110,
+            220
+        ],
+        [
+            "1074",
+            "2025-04-01",
+            "A",
+            "RUNNING",
+            "ASICS",
+            "183283",
+            1,
+            90,
+            90
+        ],
+        [
+            "1075",
+            "2025-04-05",
+            "A",
+            "RUNNING",
+            "ASICS",
+            "183284",
+            2,
+            90,
+            180
+        ],
+        [
+            "1076",
+            "2025-04-09",
+            "C",
+            "RUNNING",
+            "ASICS",
+            "183285",
+            3,
+            80,
+            240
+        ],
+        [
+            "1077",
+            "2025-04-08",
+            "B",
+            "RUNNING",
+            "ASICS",
+            "183286",
+            1,
+            100,
+            100
+        ],
+        [
+            "1078",
+            "2025-04-07",
+            "C",
+            "RUNNING",
+            "NIKE",
+            "183287",
+            1,
+            110,
+            110
+        ],
+        [
+            "1079",
+            "2025-04-08",
+            "B",
+            "BASKET",
+            "NIKE",
+            "183288",
+            1,
+            110,
+            110
+        ],
+        [
+            "1080",
+            "2025-04-09",
+            "C",
+            "RUNNING",
+            "ASICS",
+            "183289",
+            1,
+            100,
+            100
+        ],
+        [
+            "1081",
+            "2025-04-05",
+            "A",
+            "BASKET",
+            "JORDAN",
+            "183290",
+            2,
+            120,
+            240
+        ],
+        [
+            "1082",
+            "2025-04-04",
+            "B",
+            "RUNNING",
+            "NIKE",
+            "183291",
+            3,
+            150,
+            450
+        ],
+        [
+            "1083",
+            "2025-04-02",
+            "A",
+            "RUNNING",
+            "ASICS",
+            "183292",
+            3,
+            150,
+            450
+        ],
+        [
+            "1084",
+            "2025-04-08",
+            "A",
+            "CALCIO",
+            "ADIDAS",
+            "183293",
+            2,
+            95,
+            190
+        ],
+        [
+            "1085",
+            "2025-04-03",
+            "A",
+            "CALCIO",
+            "ADIDAS",
+            "183294",
+            3,
+            120,
+            360
+        ],
+        [
+            "1086",
+            "2025-04-10",
+            "B",
+            "BASKET",
+            "NIKE",
+            "183295",
+            2,
+            80,
+            160
+        ],
+        [
+            "1087",
+            "2025-04-07",
+            "B",
+            "BASKET",
+            "JORDAN",
+            "183296",
+            3,
+            150,
+            450
+        ],
+        [
+            "1088",
+            "2025-04-07",
+            "A",
+            "CALCIO",
+            "PUMA",
+            "183297",
+            1,
+            80,
+            80
+        ],
+        [
+            "1089",
+            "2025-04-02",
+            "B",
+            "TENNIS",
+            "WILSON",
+            "183298",
+            3,
+            110,
+            330
+        ],
+        [
+            "1090",
+            "2025-04-10",
+            "B",
+            "CALCIO",
+            "PUMA",
+            "183299",
+            2,
+            100,
+            200
+        ],
+        [
+            "1091",
+            "2025-04-01",
+            "B",
+            "RUNNING",
+            "NIKE",
+            "183300",
+            3,
+            150,
+            450
+        ],
+        [
+            "1092",
+            "2025-04-02",
+            "B",
+            "RUNNING",
+            "NIKE",
+            "183301",
+            2,
+            110,
+            220
+        ],
+        [
+            "1093",
+            "2025-04-07",
+            "C",
+            "CALCIO",
+            "ADIDAS",
+            "183302",
+            3,
+            95,
+            285
+        ],
+        [
+            "1094",
+            "2025-04-04",
+            "C",
+            "CALCIO",
+            "PUMA",
+            "183303",
+            3,
+            80,
+            240
+        ],
+        [
+            "1095",
+            "2025-04-04",
+            "C",
+            "CALCIO",
+            "ADIDAS",
+            "183304",
+            1,
+            80,
+            80
+        ],
+        [
+            "1096",
+            "2025-04-08",
+            "A",
+            "BASKET",
+            "NIKE",
+            "183305",
+            1,
+            80,
+            80
+        ],
+        [
+            "1097",
+            "2025-04-10",
+            "A",
+            "TENNIS",
+            "WILSON",
+            "183306",
+            1,
+            80,
+            80
+        ],
+        [
+            "1098",
+            "2025-04-09",
+            "B",
+            "TENNIS",
+            "HEAD",
+            "183307",
+            1,
+            95,
+            95
+        ],
+        [
+            "1099",
+            "2025-04-06",
+            "B",
+            "CALCIO",
+            "ADIDAS",
+            "183308",
+            2,
+            120,
+            240
+        ],
+        [
+            "1100",
+            "2025-04-09",
+            "A",
+            "BASKET",
+            "JORDAN",
+            "183309",
+            2,
+            130,
+            260
+        ]
+    ],
+    "column_config": {
+        "Transazione": {
+            "type": "string",
+            "align": "left",
+            "width": "30mm"
+        },
+        "Data": {
+            "type": "date",
+            "align": "center",
+            "width": "25mm"
+        },
+        "Negozio": {
+            "type": "string",
+            "align": "left",
+            "width": "30mm"
+        },
+        "Reparto": {
+            "type": "string",
+            "align": "left",
+            "width": "30mm"
+        },
+        "Marchio": {
+            "type": "string",
+            "align": "left",
+            "width": "30mm"
+        },
+        "Articolo": {
+            "type": "string",
+            "align": "left",
+            "fontWeight": "B",
+            "width": "30mm"
+        },
+        "Qta": {
+            "type": "number",
+            "align": "center",
+            "fontWeight": "B",
+            "width": "20mm"
+        },
+        "Prezzo vendita": {
+            "type": "price",
+            "align": "right",
+            "textColor": "#006400",
+            "width": "25mm"
+        },
+        "Totale": {
+            "type": "price",
+            "align": "right",
+            "fontWeight": "B",
+            "width": "25mm"
+        }
     },
-    "Category": {
-      "type": "string",
-      "align": "center",
-      "backgroundColor": "#f0f0f0",
-      "width": "30mm"
+    "group_by": [
+        "Reparto",
+        "Marchio"
+    ],
+    "group_config": {
+        "Reparto": {
+            "newPage": true,
+            "showSummary": true,
+            "tableSummary": true,
+            "tableSummaryTitle": "Reparto Total",
+            "tableSummaryBgColor": "#e3f2fd",
+            "tableSummaryTextColor": "#000000",
+            "tableSummaryTitleSpan": 2,
+            "summary": {
+                "Qta": {
+                    "operation": "sum",
+                    "label": "Items"
+                },
+                "Costo": {
+                    "operation": "avg",
+                    "label": "Avg Price"
+                }
+            },
+            "summaryTitle": "Reparto Summary",
+            "summaryTitleFontSize": 14,
+            "summaryTextFormat": "<strong>{label}</strong>: {value}",
+            "summaryTextStyle": {
+                "bgColor": "#e3f2fd",
+                "textColor": "#000000",
+                "fontWeight": "bold",
+                "fontSize": "12pt"
+            },
+            "contentAfter": "<p><i>This is a HTML content after the table.</i></p>"
+        },
+        "Marchio": {
+            "newPage": true,
+            "showSummary": true,
+            "tableSummary": true,
+            "tableSummaryTitle": "Brand Total",
+            "tableSummaryBgColor": "#e8f5e9",
+            "tableSummaryTextColor": "#000000",
+            "tableSummaryTitleSpan": 2,
+            "summary": {
+                "Qta": "sum",
+                "Totale": {
+                    "operation": "sum",
+                    "label": "Brand Total"
+                }
+            },
+            "summaryTitle": "Brand Summary",
+            "summaryTextFormat": "{label}: {value}",
+            "contentAfter": "<p>End of brand report section.</p>"
+        },
+        "Macrofamiglia": {
+            "newPage": true,
+            "showSummary": true,
+            "tableSummary": true,
+            "tableSummaryTitle": "Macrofamily Total",
+            "tableSummaryBgColor": "#e8f5e9",
+            "tableSummaryTextColor": "#000000",
+            "tableSummaryTitleSpan": 2,
+            "summary": {
+                "Qta": "sum",
+                "Totale": {
+                    "operation": "sum",
+                    "label": "Macrofamily Total"
+                }
+            },
+            "summaryTitle": "Macrofamily Summary",
+            "summaryTextFormat": "{label}: {value}", 
+            "contentAfter": "<p>End of macrofamily report section.</p>"
+        }
     },
-    "Price": {
-      "type": "price",
-      "align": "right",
-      "textColor": "#006400",
-      "width": "25mm"
-    },
-    "Stock": {
-      "type": "number",
-      "align": "center",
-      "fontWeight": "B",
-      "width": "20mm",
-      "backgroundColor": "#fff8e1"
-    }
-  },
-    
-  "content_before": "<h2>Product Sales Summary</h2>",
-  "content_after": "<p>Total Items: 35</p><p>Total Revenue: €7,599.65</p>",
-
-  "group_by": "Category",
-  "sort_by": "Price",
-  "sort_ascending": false,
-  
-  "table_border": 1,
-  "table_padding": 6,
-  "header_bg": "#e6f2ff",
-  
-  "output_mode": "B64", 
-  "filename": "product_sales_report.pdf"
+    "sort_by": "Totale",
+    "sort_ascending": false
 }

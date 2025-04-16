@@ -50,11 +50,13 @@ L'API accetta richieste POST con un payload JSON che deve contenere almeno quest
 | `header_bg` | string | `"#f2f2f2"` | Colore di sfondo intestazione tabella (formato hex) |
 | `content_before` | string | - | Testo da inserire prima della tabella |
 | `content_after` | string | - | Testo da inserire dopo la tabella |
-| `group_by` | string/number | - | Colonna da utilizzare per raggruppamento |
+| `group_by` | string/array | - | Colonna(e) da utilizzare per raggruppamento (singola colonna o array per multi-livello) |
+| `group_config` | object | - | Configurazione per ciascun livello di raggruppamento |
 | `sort_by` | string/number | - | Colonna da utilizzare per ordinamento |
 | `sort_ascending` | boolean | `true` | Ordine crescente (`true`) o decrescente (`false`) |
 | `output_mode` | string | `"B64"` | Modalità output: `"B64"` (Base64) o `"F"` (File) |
 | `filename` | string | - | Nome del file PDF generato |
+| `format` | string | `"A4"` | Formato del documento (A4, A3, A0, ecc.) |
 
 ### Configurazione Avanzata delle Colonne
 
@@ -69,6 +71,35 @@ Utilizzando il parametro `column_config`, è possibile specificare diverse propr
 | `backgroundColor` | string | `null` | Colore di sfondo della colonna in formato HTML (es. "#f0f0f0") |
 | `textColor` | string | `null` | Colore del testo della colonna in formato HTML (es. "#006400") |
 | `padding` | number | `1` | Padding della cella in punti |
+
+### Raggruppamento Multi-livello e Configurazione Gruppi
+
+Quando si utilizza `group_by` con un array di colonne per il raggruppamento multi-livello, è possibile configurare dettagliatamente ogni livello con `group_config`:
+
+| Proprietà | Tipo | Default | Descrizione |
+|-----------|------|---------|-------------|
+| `pageBreak` | boolean | `false` | Indica se ogni categoria di questo livello deve iniziare su una nuova pagina |
+| `showSummary` | boolean | `false` | Indica se mostrare un riepilogo per questo gruppo |
+| `tableSummary` | boolean | `false` | Indica se mostrare una riga di riepilogo nella tabella |
+| `summaryColumns` | object | `{}` | Definisce quali colonne includere nel riepilogo e quali operazioni eseguire |
+| `summaryTitle` | string | `"Summary"` | Titolo per la sezione di riepilogo |
+| `summaryTitleFontSize` | number | `14` | Dimensione del font per il titolo del riepilogo |
+| `summaryTextFormat` | string | `"{label}: {value}" ({column} or {operation})` | Formato per il testo del riepilogo |
+| `summaryTextStyle` | object | - | Stili CSS per il testo del riepilogo |
+| `titleFormat` | function | - | Funzione per formattare il titolo del gruppo |
+| `contentAfter` | string/function | - | Testo HTML o funzione per aggiungere contenuto dopo il gruppo |
+
+### Operazioni di Riepilogo Supportate
+
+Utilizzabili in `summaryColumns` per calcolare valori di riepilogo:
+
+| Operazione | Descrizione |
+|------------|-------------|
+| `sum` | Somma di tutti i valori |
+| `avg` | Media aritmetica dei valori |
+| `count` | Conteggio degli elementi |
+| `min` | Valore minimo |
+| `max` | Valore massimo |
 
 ### Tipi di Dati Supportati per Colonne
 
@@ -134,67 +165,132 @@ Utilizzando il parametro `column_config`, è possibile specificare diverse propr
 }
 ```
 
-#### Esempio 3: Tabella Completa di funzionalità
+#### Esempio 3: Raggruppamento Multi-livello con Configurazione Avanzata
 
 ```json
 {
-  "title": "Products Report",
+  "title": "Report Vendite Multi-livello",
   "orientation": "L",
-  "author": "Sales Department",
-  "margins": [10, 15, 10],
-
-  "columns": ["Product", "Category", "Price", "Stock"],
+  "format": "A4",
+  "columns": ["Reparto", "Categoria", "Prodotto", "Prezzo", "Vendite", "Totale"],
   "rows": [
-    ["Product A", "Electronics", 299.99, 45],
-    ["Product B", "Furniture", 199.50, 12],
-    ["Product C", "Electronics", 99.99, 200],
-    ["Product D", "Clothing", 49.99, 75],
-    ["Product E", "Furniture", 399.99, 8],
-    ["Product F", "Clothing", 29.99, 150]
+    ["Elettronica", "Smartphone", "iPhone 14", 999.99, 5, 4999.95],
+    ["Elettronica", "Smartphone", "Samsung S22", 899.99, 8, 7199.92],
+    ["Elettronica", "Laptop", "MacBook Pro", 1499.99, 3, 4499.97],
+    ["Abbigliamento", "Magliette", "T-shirt Bianca", 19.99, 15, 299.85],
+    ["Abbigliamento", "Pantaloni", "Jeans Classic", 59.99, 10, 599.90]
   ],
-  
   "column_config": {
-    "Product": {
-      "type": "string",
-      "align": "left",
-      "fontWeight": "B",
-      "width": "40mm"
+    "Prezzo": {"type": "price", "align": "right"},
+    "Vendite": {"type": "number", "align": "center"},
+    "Totale": {"type": "price", "align": "right", "fontWeight": "B"}
+  },
+  "group_by": ["Reparto", "Categoria"],
+  "sort_by": "Totale",
+  "sort_ascending": false,
+  "group_config": {
+    "Reparto": {
+      "pageBreak": true,
+      "showSummary": true,
+      "summaryTitle": "Riepilogo Reparto",
+      "summaryColumns": {
+        "Vendite": {"operation": "sum", "label": "Articoli Venduti"},
+        "Totale": {"operation": "sum", "label": "Fatturato Reparto"}
+      },
+      "contentAfter": "<p><em>Fine sezione reparto</em></p>"
     },
-    "Category": {
-      "type": "string",
-      "align": "center",
-      "backgroundColor": "#f0f0f0",
-      "width": "30mm"
+    "Categoria": {
+      "pageBreak": true,
+      "showSummary": true,
+      "tableSummary": true,
+      "tableSummaryTitle": "Totale Categoria",
+      "tableSummaryBgColor": "#e8f5e9",
+      "summaryColumns": {
+        "Vendite": "sum",
+        "Totale": {"operation": "sum", "label": "Totale Categoria"}
+      },
+      "summaryTextFormat": "<strong>{label}</strong>: {value}"
+    }
+  }
+}
+```
+
+#### Esempio 4: Report Complesso con Formattazione Avanzata
+
+```json
+{
+  "title": "Report Analitico Vendite",
+  "author": "Sistema di Reportistica",
+  "orientation": "L",
+  "format": "A0",
+  "margins": [15, 15, 15],
+  "columns": ["Data", "Negozio", "Reparto", "Categoria", "Prodotto", "Prezzo", "Sconto", "Quantità", "Totale"],
+  "rows": [
+    ["2025-04-10", "Milano", "Elettronica", "Audio", "Cuffie Wireless", 129.99, "10%", 3, 350.97],
+    ["2025-04-11", "Roma", "Elettronica", "TV", "Smart TV 55\"", 699.99, "5%", 2, 1329.98],
+    ["2025-04-10", "Milano", "Casa", "Arredamento", "Poltrona Design", 349.99, "15%", 1, 297.49]
+  ],
+  "column_config": {
+    "Data": {"type": "date", "align": "center", "width": "25mm"},
+    "Negozio": {"type": "string", "align": "left", "width": "30mm"},
+    "Reparto": {"type": "string", "align": "left", "width": "30mm"},
+    "Categoria": {"type": "string", "align": "left", "width": "30mm"},
+    "Prodotto": {"type": "string", "align": "left", "width": "40mm", "fontWeight": "B"},
+    "Prezzo": {"type": "price", "align": "right", "width": "25mm"},
+    "Sconto": {"type": "percentage", "align": "center", "width": "20mm", "textColor": "#e53935"},
+    "Quantità": {"type": "number", "align": "center", "width": "20mm"},
+    "Totale": {"type": "price", "align": "right", "width": "25mm", "fontWeight": "B", "textColor": "#006400"}
+  },
+  "group_by": ["Negozio", "Reparto", "Categoria"],
+  "sort_by": "Totale",
+  "sort_ascending": false,
+  "group_config": {
+    "Negozio": {
+      "pageBreak": true,
+      "showSummary": true,
+      "summaryTitle": "Performance Negozio",
+      "summaryTitleFontSize": 14,
+      "summaryColumns": {
+        "Quantità": {"operation": "sum", "label": "Articoli Venduti"},
+        "Totale": {"operation": "sum", "label": "Fatturato Totale"}
+      },
+      "summaryTextStyle": {
+        "bgColor": "#e3f2fd",
+        "textColor": "#0d47a1",
+        "fontWeight": "bold",
+        "fontSize": "12pt"
+      },
+      "contentAfter": "<p style='text-align: center;'><strong>* I dati di vendita sono indicativi e potrebbero essere soggetti a variazioni</strong></p>"
     },
-    "Price": {
-      "type": "price",
-      "align": "right",
-      "textColor": "#006400",
-      "width": "25mm"
+    "Reparto": {
+      "pageBreak": true,
+      "tableSummary": true,
+      "tableSummaryTitle": "Totale Reparto",
+      "tableSummaryBgColor": "#e8f5e9",
+      "tableSummaryTextColor": "#2e7d32",
+      "summaryColumns": {
+        "Quantità": "sum",
+        "Totale": {"operation": "sum", "label": "Totale Reparto"}
+      }
     },
-    "Stock": {
-      "type": "number",
-      "align": "center",
-      "fontWeight": "B",
-      "width": "20mm",
-      "backgroundColor": "#fff8e1"
+    "Categoria": {
+      "pageBreak": false,
+      "showSummary": true,
+      "summaryTitle": "Analisi Categoria",
+      "summaryColumns": {
+        "Sconto": {"operation": "avg", "label": "Sconto Medio"},
+        "Quantità": {"operation": "sum", "label": "Quantità Venduta"},
+        "Totale": "sum"
+      },
+      "summaryTextFormat": "{label}: <strong>{value}</strong>"
     }
   },
-    
-  "content_before": "<h2>Product Sales Summary</h2>",
-  "content_after": "<p>Total Items: 35</p><p>Total Revenue: €7,599.65</p>",
-  "format": "A4",
-
-  "group_by": "Category",
-  "sort_by": "Price",
-  "sort_ascending": false,
-  
+  "content_before": "<h1 style='color: #1976d2;'>Report di Vendita Dettagliato</h1><p>Analisi delle performance di vendita per negozio, reparto e categoria.</p>",
+  "content_after": "<div style='margin-top: 10mm; text-align: center;'><p>Report generato automaticamente - Aprile 2025</p><p>Documento ad uso interno</p></div>",
   "table_border": 1,
   "table_padding": 6,
-  "header_bg": "#e6f2ff",
-  
-  "output_mode": "B64",
-  "filename": "product_sales_report.pdf"
+  "header_bg": "#1976d2",
+  "output_mode": "F"
 }
 ```
 
@@ -282,13 +378,22 @@ La risposta è in formato JSON:
 
 ## Funzionalità Avanzate
 
-### Raggruppamento per Categoria
+### Raggruppamento Multi-livello
 
-La funzione `addTablesByCategoryPerPage` consente di:
-- Raggruppare i dati per una colonna specifica
-- Creare una tabella separata per ogni categoria
-- Disporre ogni categoria su una nuova pagina
-- Ordinare i dati all'interno di ciascuna categoria
+La funzione `addTablesByMultipleCategories` consente di:
+- Raggruppare i dati per multiple colonne creando una struttura gerarchica
+- Configurare indipendentemente ogni livello di raggruppamento
+- Aggiungere salti di pagina selettivi per specifici livelli
+- Generare riepiloghi per ciascun gruppo con operazioni personalizzate
+- Aggiungere contenuto HTML personalizzato dopo ogni gruppo
+
+### Controllo Preciso delle Interruzioni di Pagina
+
+La proprietà `pageBreak` nei gruppi consente di:
+- Specificare quali livelli devono iniziare su una nuova pagina
+- Evitare intestazioni di gerarchia ridondanti dopo i salti di pagina
+- Ottimizzare lo spazio utilizzato all'interno del documento
+- Mantenere un layout coerente anche in report complessi
 
 ### Formattazione e Stile delle Colonne
 
@@ -300,17 +405,20 @@ La classe `ColumnConfig` gestisce:
 - Larghezze fisse delle colonne
 - Padding delle celle
 
-### Ordinamento Intelligente dei Dati
+### Riepiloghi e Aggregazioni
 
-La classe `DataSorter` gestisce:
-- Ordinamento di dati per qualsiasi colonna
-- Supporto per diversi tipi di dati durante l'ordinamento
-- Confronti personalizzati basati sul tipo di dati
+È possibile aggiungere:
+- Riepiloghi testuali formatati dopo ogni gruppo di dati
+- Righe di riepilogo integrate nelle tabelle
+- Operazioni di aggregazione (somma, media, conteggio, min, max)
+- Formattazione personalizzata dei valori di riepilogo
+- Stili personalizzati per le sezioni di riepilogo
 
 ### Personalizzazione del Layout
 
 È possibile personalizzare:
 - Orientamento delle pagine (verticale/orizzontale)
+- Formato del documento (A4, A3, A0, ecc.)
 - Margini del documento
 - Dimensioni e stili dei font
 - Colori e bordi delle tabelle
