@@ -2,7 +2,7 @@
     "title": "Report PDF Test",
     "author": "Tommaso Lo Piparo",
     "orientation": "L",
-    "format": "A0",
+    "format": "A4",
     "margins": [
         15,
         15,
@@ -12,8 +12,8 @@
     "content_font_size": 10,
     "filename": "report_test",
     "output_mode": "F",
-    "content_before": "<h1>TEST REPORT MOCK-DATA</h1><p>This report demonstrates advanced grouping and summary features with group-level configurations.</p>",
-    "content_after": "<h2>TEST REPORT TESTO FINALE</h2><p>This report was automatically generated on April 15, 2025 and contains sample data for demonstration purposes only.</p>",
+    "content_before": "<h1>Lorem Ipsum</h1><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent sed faucibus ipsum. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae;</p>",
+    "content_after": "<h2>Lorem Ipsum</h2><pInteger est ante, rhoncus sit amet purus sit amet, vulputate dapibus nisi. Praesent at diam eu mauris tempor placerat quis eget massa. Nam facilisis nunc nulla, eget commodo velit efficitur in.</p>",
     "table_border": 1,
     "table_padding": 5,
     "header_bg": "#3498db",
@@ -1187,7 +1187,7 @@
     ],
     "group_config": {
         "Reparto": {
-            "newPage": true,
+            "pageBreak": true,
             "showSummary": true,
             "tableSummary": true,
             "tableSummaryTitle": "Reparto Total",
@@ -1213,13 +1213,13 @@
                 "fontWeight": "bold",
                 "fontSize": "12pt"
             },
-            "contentAfter": "<p><i>This is a HTML content after the table.</i></p>"
+            "contentAfter": "<p><i>Nam consequat urna sit amet justo lobortis lobortis. Nunc a vehicula urna, vitae mollis risus. Integer sit amet sapien sed velit sollicitudin pulvinar.</i></p>"
         },
         "Marchio": {
-            "newPage": true,
+            "pageBreak": true,
             "showSummary": true,
             "tableSummary": true,
-            "tableSummaryTitle": "Brand Total",
+            "tableSummaryTitle": "Marchio Total",
             "tableSummaryBgColor": "#e8f5e9",
             "tableSummaryTextColor": "#000000",
             "tableSummaryTitleSpan": 2,
@@ -1227,31 +1227,12 @@
                 "Qta": "sum",
                 "Totale": {
                     "operation": "sum",
-                    "label": "Brand Total"
+                    "label": "Marchio Total"
                 }
             },
-            "summaryTitle": "Brand Summary",
+            "summaryTitle": "Marchio Summary",
             "summaryTextFormat": "{label}: {value}",
-            "contentAfter": "<p>End of brand report section.</p>"
-        },
-        "Macrofamiglia": {
-            "newPage": true,
-            "showSummary": true,
-            "tableSummary": true,
-            "tableSummaryTitle": "Macrofamily Total",
-            "tableSummaryBgColor": "#e8f5e9",
-            "tableSummaryTextColor": "#000000",
-            "tableSummaryTitleSpan": 2,
-            "summary": {
-                "Qta": "sum",
-                "Totale": {
-                    "operation": "sum",
-                    "label": "Macrofamily Total"
-                }
-            },
-            "summaryTitle": "Macrofamily Summary",
-            "summaryTextFormat": "{label}: {value}", 
-            "contentAfter": "<p>End of macrofamily report section.</p>"
+            "contentAfter": "<p>Nam consequat urna sit amet justo lobortis lobortis. Nunc a vehicula urna, vitae mollis risus. Integer sit amet sapien sed velit sollicitudin pulvinar.</p>"
         }
     },
     "sort_by": "Totale",
