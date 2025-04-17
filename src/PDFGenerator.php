@@ -581,7 +581,7 @@ class PDFGenerator
 
             case 'F':
                 // File output
-                $dir = dirname(dirname(__FILE__)) . DIRECTORY_SEPARATOR . 'pdf_output';
+                $dir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'pdf_output';
                 if (!is_dir($dir)) {
                     mkdir($dir, 0755, true);
                 }
@@ -592,6 +592,7 @@ class PDFGenerator
                 return [
                     'success' => true,
                     'message' => 'PDF saved to file successfully',
+                    'filename' => $filename,
                     'file_path' => $filepath
                 ];
 
