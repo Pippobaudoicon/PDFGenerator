@@ -61,6 +61,7 @@ class PDFGenerator
     {
         // Load TCPDF library
         require_once(dirname(__DIR__) . '/vendor/autoload.php');
+        require_once(__DIR__ . '/constants.php');
 
         // Merge provided config with defaults
         $this->config = array_merge($this->defaultConfig, $config);
@@ -120,6 +121,11 @@ class PDFGenerator
     {
         if (!isset($data['columns']) || !isset($data['rows'])) {
             throw new Exception('Data must contain "columns" and "rows" keys');
+        }
+
+        // Check if rows contain associative arrays and normalize them if needed
+        if (isset($data['columns']) && isset($data['rows']) && is_array($data['rows'])) {
+            $data['rows'] = $this->normalizeRowsFormat($data['rows'], $data['columns']);
         }
 
         $this->data = $data;
@@ -248,7 +254,7 @@ class PDFGenerator
             $name = preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $name));
 
             // Always use .pdf extension
-            $this->filename = "{$name}_{$timestamp}.pdf";
+            $this->filename = "{$timestamp}-{$name}.pdf";
         }
         return $this;
     }
@@ -316,7 +322,7 @@ class PDFGenerator
      * @param int $spacing Spacing after the title
      * @return PDFGenerator
      */
-    public function addTitle(string $title, int $fontSize = null, int $spacing = 5)
+    public function addTitle(string $title, int $fontSize = null, int $spacing = 0)
     {
         $fontSize = $fontSize ?? $this->config['title_font_size'];
 
@@ -588,12 +594,12 @@ class PDFGenerator
 
                 $filepath = $dir . DIRECTORY_SEPARATOR . $filename;
                 $this->pdf->Output($filepath, 'F');
-
                 return [
                     'success' => true,
                     'message' => 'PDF saved to file successfully',
                     'filename' => $filename,
-                    'file_path' => $filepath
+                    'file_path' => $filepath,
+                    'url' => BASE_URL_PDF . $filename
                 ];
 
             default:
@@ -629,11 +635,6 @@ class PDFGenerator
         // Get the column names from the data
         $columns = $this->data['columns'] ?? [];
 
-        // Get the category column name for display
-        $categoryColName = is_numeric($categoryColumn) ?
-            ($columns[$categoryColumn] ?? "Category") :
-            $categoryColumn;
-
         $pageOrientation = $this->config['orientation'];
         $isFirstCategory = true;
 
@@ -657,8 +658,15 @@ class PDFGenerator
                 $this->addPage($pageOrientation);
             }
 
-            // Add the category as a title
+            // Get the category column name for display
+            $categoryColName = is_numeric($categoryColumn) ?
+                ($columns[$categoryColumn] ?? "Category") :
+                $categoryColumn;
+
+            // Add the category as a title with the column name
             $this->addTitle("$categoryColName: $category");
+
+            $this->addSpacing(5);
 
             // Add the table for this category
             $this->addTable($columns, $rows, $options);
@@ -758,7 +766,7 @@ class PDFGenerator
             // First category doesn't need a page break since we already added one
             $isFirstCategory = false;
 
-            // Add the top-level category title
+            // Add the top-level category title with column name prefix
             $title = $topCategoryName . ": " . $topCategory;
             if (isset($topLevelConfig['titleFormat']) && is_callable($topLevelConfig['titleFormat'])) {
                 $title = call_user_func($topLevelConfig['titleFormat'], $topCategoryName, $topCategory);
@@ -1124,29 +1132,28 @@ class PDFGenerator
                 $simplePath = $path;
             }
             
-            // Build the title
-            if ($needsPageBreak) {
-                // Simplified title after page break (no hierarchy)
-                $title = "$currentCategoryName: $category";
-            } else {
-                // Normal title with full path
-                if (!empty($simplePath)) {
-                    if (isset($levelConfig['titleFormat']) && is_callable($levelConfig['titleFormat'])) {
-                        $title = call_user_func($levelConfig['titleFormat'], $currentCategoryName, $category, $simplePath);
-                    } else {
-                        $title = implode(" -> ", $simplePath) . " -> $currentCategoryName: $category";
-                    }
-                } else {
-                    if (isset($levelConfig['titleFormat']) && is_callable($levelConfig['titleFormat'])) {
-                        $title = call_user_func($levelConfig['titleFormat'], $currentCategoryName, $category);
-                    } else {
-                        $title = "$currentCategoryName: $category";
-                    }
-                }
+            // Set the title and adjust font size based on nesting level/depth
+            $categoryColName = $categoryColNames[$level] ?? "Category";
+            $title = $categoryColName . ": " . $category;
+            
+            // Calculate font size based on level - the deeper the level, the smaller the font
+            $baseFontSize = $this->config['title_font_size'] ?? 16; // Default title font size
+            $levelReduction = 2.5; // Reduction in font size per level
+            $minFontSize = 10; // Minimum font size
+            
+            // Calculate font size: Start with base size and reduce by level
+            $titleFontSize = max($baseFontSize - ($level * $levelReduction), $minFontSize);
+            
+            // Use custom title format if provided
+            if (isset($levelConfig['titleFormat']) && is_callable($levelConfig['titleFormat'])) {
+                $title = call_user_func($levelConfig['titleFormat'], $currentCategoryName, $category, $simplePath);
             }
             
-            // Add the title for this group
-            $this->addTitle($title);
+            // Add the title for this group with the calculated font size
+            $this->addTitle($title, $titleFontSize);
+
+            // Add spacing before the table
+            $this->addSpacing(5);
             
             // Process leaf nodes (actual data) or continue recursion
             if ($isLeafNode) {
@@ -1302,5 +1309,60 @@ class PDFGenerator
         
         // No direct tables found at this level
         return false;
+    }
+
+    /**
+     * Convert associative array rows to indexed arrays based on column names
+     * 
+     * @param array $rows The rows data which may contain associative arrays
+     * @param array $columns The column names to use as reference
+     * @return array Normalized rows with indexed arrays
+     */
+    private function normalizeRowsFormat(array $rows, array $columns)
+    {
+        $normalizedRows = [];
+        
+        foreach ($rows as $row) {
+            // If row is not an array at all, skip it
+            if (!is_array($row)) {
+                continue;
+            }
+            
+            // Check if this is an associative array (has string keys)
+            $hasStringKeys = false;
+            foreach ($row as $key => $value) {
+                if (is_string($key)) {
+                    $hasStringKeys = true;
+                    break;
+                }
+            }
+            
+            if ($hasStringKeys) {
+                // This is an associative array, convert to indexed based on columns
+                $indexedRow = [];
+                foreach ($columns as $columnIndex => $columnName) {
+                    // Look for the column by name (case-insensitive)
+                    $found = false;
+                    foreach ($row as $key => $value) {
+                        if (is_string($key) && strcasecmp($key, $columnName) === 0) {
+                            $indexedRow[$columnIndex] = $value;
+                            $found = true;
+                            break;
+                        }
+                    }
+                    
+                    // If not found, use empty value
+                    if (!$found) {
+                        $indexedRow[$columnIndex] = '';
+                    }
+                }
+                $normalizedRows[] = $indexedRow;
+            } else {
+                // This is already an indexed array, keep as is
+                $normalizedRows[] = $row;
+            }
+        }
+        
+        return $normalizedRows;
     }
 }
