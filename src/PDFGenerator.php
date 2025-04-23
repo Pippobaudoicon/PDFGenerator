@@ -41,6 +41,8 @@ class PDFGenerator
         'content_font_size' => 10,
         'table_border' => 1,
         'table_padding' => 5,
+        'title_level_reduction' => 2.5,  // Font size reduction per level in hierarchical titles
+        'title_min_font_size' => 10,     // Minimum font size for hierarchical titles
     ];
 
     /** @var string PDF filename */
@@ -116,8 +118,9 @@ class PDFGenerator
      * 
      * @param array $data Data to be rendered in the PDF (columns and rows)
      * @return PDFGenerator
+     * @throws Exception If data doesn't contain required keys
      */
-    public function setData(array $data)
+    public function setData(array $data): PDFGenerator
     {
         if (!isset($data['columns']) || !isset($data['rows'])) {
             throw new Exception('Data must contain "columns" and "rows" keys');
@@ -135,13 +138,10 @@ class PDFGenerator
     /**
      * Set column configurations for formatting
      * 
-     * @param array $configs Column configurations can be specified in multiple formats:
-     *                     - By index: [0 => ['type' => 'price'], 2 => ['type' => 'number']]
-     *                     - By column name: ['Price' => ['type' => 'price'], 'Quantity' => ['type' => 'number']]
-     *                     - With formatting: ['Price' => ['type' => 'price', 'align' => 'right', 'width' => '20mm']]
+     * @param array $configs Column configurations can be specified in multiple formats
      * @return PDFGenerator
      */
-    public function setColumnConfigs(array $configs)
+    public function setColumnConfigs(array $configs): PDFGenerator
     {
         // Clear existing column configs
         $this->columnConfigs = [];
@@ -166,7 +166,7 @@ class PDFGenerator
      * 
      * @return array Array of ColumnConfig objects
      */
-    public function getColumnConfigs()
+    public function getColumnConfigs(): array
     {
         return $this->columnConfigs;
     }
@@ -178,7 +178,7 @@ class PDFGenerator
      * @param array|string $config Config array or type string
      * @return PDFGenerator
      */
-    public function setColumnConfig($columnKey, $config)
+    public function setColumnConfig($columnKey, $config): PDFGenerator
     {
         // If config is just a string, treat it as the type
         if (is_string($config)) {
@@ -202,7 +202,7 @@ class PDFGenerator
      * @param mixed $columnKey Column index or name
      * @return ColumnConfig Column configuration (or default if not found)
      */
-    public function getColumnConfig($columnKey)
+    public function getColumnConfig($columnKey): ColumnConfig
     {
         // Direct match by column index or name
         if (isset($this->columnConfigs[$columnKey])) {
@@ -236,21 +236,22 @@ class PDFGenerator
      * @param string $filename Filename for the PDF
      * @return PDFGenerator
      */
-    public function setFilename(string $filename = '')
+    public function setFilename(string $filename = ''): PDFGenerator
     {
         if (empty($filename)) {
             // Generate a unique filename based on timestamp and random string
             $timestamp = date('Ymd_His') . '_' . substr(microtime(), 2, 3);
-
             $randomStr = substr(md5(uniqid(mt_rand(), true)), 0, 8);
             $this->filename = "document_{$timestamp}_{$randomStr}.pdf";
         } else {
             // Add timestamp to ensure uniqueness of the filename
             $timestamp = date('Ymd_His') . '_' . substr(microtime(), 2, 3);
-            // Extract the filename without extension even if it doens't have one
+            
+            // Extract the filename without extension
             $pathInfo = pathinfo($filename);
             $name = $pathInfo['filename'];
-            // Replace spaces with underscores and remove special characters in the filename
+            
+            // Clean filename - replace spaces with underscores and remove special characters
             $name = preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $name));
 
             // Always use .pdf extension
@@ -264,7 +265,7 @@ class PDFGenerator
      * 
      * @return string Current filename
      */
-    public function getFilename()
+    public function getFilename(): string
     {
         return $this->filename;
     }
@@ -276,7 +277,7 @@ class PDFGenerator
      * @param bool $ascending Whether to sort in ascending order
      * @return PDFGenerator
      */
-    public function sortData($columnIndex, bool $ascending = true)
+    public function sortData($columnIndex, bool $ascending = true): PDFGenerator
     {
         $this->sorter->setData($this->data);
         $this->sorter->setColumnConfigs($this->columnConfigs);
@@ -291,9 +292,9 @@ class PDFGenerator
      * 
      * @return array Current data
      */
-    public function getData()
+    public function getData(): array
     {
-        return $this->data;
+        return $this->data ?? [];
     }
 
     /**
@@ -303,7 +304,7 @@ class PDFGenerator
      * @param string $format Override the page format (A4, A3, etc.)
      * @return PDFGenerator
      */
-    public function addPage(string $orientation = '', string $format = '')
+    public function addPage(string $orientation = '', string $format = ''): PDFGenerator
     {
         // If format is provided, use it; otherwise use the default
         if (!empty($format)) {
@@ -318,11 +319,11 @@ class PDFGenerator
      * Add a title to the current page
      * 
      * @param string $title Title text
-     * @param int $fontSize Font size for the title
+     * @param int|null $fontSize Font size for the title
      * @param int $spacing Spacing after the title
      * @return PDFGenerator
      */
-    public function addTitle(string $title, int $fontSize = null, int $spacing = 0)
+    public function addTitle(string $title, ?int $fontSize = null, int $spacing = 0): PDFGenerator
     {
         $fontSize = $fontSize ?? $this->config['title_font_size'];
 
@@ -334,6 +335,21 @@ class PDFGenerator
     }
 
     /**
+     * Calculate appropriate font size based on nesting level
+     * 
+     * @param int $level Nesting level (0 for top level)
+     * @return int Font size
+     */
+    private function calculateTitleFontSize(int $level): int
+    {
+        $baseFontSize = $this->config['title_font_size'];
+        $levelReduction = $this->config['title_level_reduction'];
+        $minFontSize = $this->config['title_min_font_size'];
+        
+        return max($baseFontSize - ($level * $levelReduction), $minFontSize);
+    }
+    
+    /**
      * Add a table to the current page
      * 
      * @param array|null $columns Column names (if null, use from data)
@@ -342,7 +358,7 @@ class PDFGenerator
      * @param array|null $summaryConfig Summary configuration for the table
      * @return PDFGenerator
      */
-    public function addTable(array $columns = null, array $rows = null, array $options = [], array $summaryConfig = null)
+    public function addTable(?array $columns = null, ?array $rows = null, array $options = [], ?array $summaryConfig = null): PDFGenerator
     {
         // Use provided data or fall back to stored data
         $columns = $columns ?? $this->data['columns'] ?? [];
@@ -417,100 +433,8 @@ class PDFGenerator
         
         // Add summary row if configured
         if (!empty($summaryConfig) && !empty($summaryConfig['summary'])) {
-            // Process each summary column and create a summary row
-            $summaryValues = [];
-            $summaryRow = array_fill(0, count($columns), ''); // Initialize with empty values
-            
-            // Add the summary header
-            $summaryTitle = $summaryConfig['summaryTitle'] ?? 'Summary';
-            $summaryBgColor = $summaryConfig['summaryBgColor'] ?? '#f9f9f9';
-            $summaryTextColor = $summaryConfig['summaryTextColor'] ?? '#000000';
-            
-            // Style the summary row
-            $html .= sprintf(
-                '<tr style="font-weight: bold; background-color: %s; color: %s;">',
-                $summaryBgColor,
-                $summaryTextColor
-            );
-            
-            // First cell contains the summary title, spans multiple columns if configured
-            $titleSpan = $summaryConfig['titleSpan'] ?? 1;
-            if ($titleSpan > 1) {
-                $html .= sprintf(
-                    '<td colspan="%d" style="text-align: left;">%s</td>',
-                    $titleSpan,
-                    htmlspecialchars($summaryTitle)
-                );
-            } else {
-                $html .= sprintf(
-                    '<td style="text-align: left;">%s</td>',
-                    htmlspecialchars($summaryTitle)
-                );
-            }
-            
-            // Skip cells that were spanned
-            for ($i = 1; $i < $titleSpan; $i++) {
-                unset($summaryRow[$i]);
-            }
-            
-            // Calculate summary values and populate the summary row
-            foreach ($summaryConfig['summary'] as $colKey => $summaryDef) {
-                // Get the column index if a name was specified
-                $colIndex = $colKey;
-                
-                if (is_string($colKey) && !is_numeric($colKey)) {
-                    $colIndex = array_search($colKey, $columns);
-                }
-                
-                if ($colIndex !== false && isset($columns[$colIndex])) {
-                    // Get the column config for formatting
-                    $columnConfig = $this->getColumnConfig($colIndex);
-                    
-                    // Parse summary definition
-                    $operation = '';
-                    
-                    if (is_array($summaryDef)) {
-                        $operation = $summaryDef['operation'] ?? '';
-                    } else {
-                        // If just a string operation is provided
-                        $operation = $summaryDef;
-                    }
-                    
-                    if (!empty($operation)) {
-                        // Extract values for this column from all rows
-                        $values = array_column($rows, $colIndex);
-                        
-                        // Calculate summary value based on operation
-                        $summaryValue = $this->calculateSummaryValue($values, $operation);
-                        
-                        // Format the summary value according to the column type
-                        $formattedValue = $columnConfig->formatValue($summaryValue);
-                        
-                        // Add to the summary row
-                        $summaryRow[$colIndex] = $formattedValue;
-                    }
-                }
-            }
-            
-            // Add the rest of the summary row cells
-            for ($i = $titleSpan; $i < count($columns); $i++) {
-                if (isset($summaryRow[$i])) {
-                    // Get column styling
-                    $columnConfig = $this->getColumnConfig($i);
-                    $styleAttr = $columnConfig->getStyleString();
-                    
-                    $html .= sprintf(
-                        '<td%s>%s</td>',
-                        $styleAttr ? ' style="' . $styleAttr . '"' : '',
-                        htmlspecialchars($summaryRow[$i])
-                    );
-                } else {
-                    // Empty cell
-                    $html .= '<td></td>';
-                }
-            }
-            
-            $html .= '</tr>';
+            // Add the summary row
+            $this->addSummaryRowToTable($html, $columns, $rows, $summaryConfig);
         }
 
         $html .= '</table>';
@@ -522,13 +446,118 @@ class PDFGenerator
     }
 
     /**
+     * Generate and add a summary row to a table
+     * 
+     * @param string &$html HTML table being built
+     * @param array $columns Column names
+     * @param array $rows Table data rows
+     * @param array $summaryConfig Summary configuration
+     */
+    private function addSummaryRowToTable(string &$html, array $columns, array $rows, array $summaryConfig): void
+    {
+        // Process each summary column and create a summary row
+        $summaryRow = array_fill(0, count($columns), ''); // Initialize with empty values
+        
+        // Add the summary header styling
+        $summaryTitle = $summaryConfig['summaryTitle'] ?? 'Summary';
+        $summaryBgColor = $summaryConfig['summaryBgColor'] ?? '#f9f9f9';
+        $summaryTextColor = $summaryConfig['summaryTextColor'] ?? '#000000';
+        
+        // Style the summary row
+        $html .= sprintf(
+            '<tr style="font-weight: bold; background-color: %s; color: %s;">',
+            $summaryBgColor,
+            $summaryTextColor
+        );
+        
+        // First cell contains the summary title, spans multiple columns if configured
+        $titleSpan = $summaryConfig['titleSpan'] ?? 1;
+        if ($titleSpan > 1) {
+            $html .= sprintf(
+                '<td colspan="%d" style="text-align: left;">%s</td>',
+                $titleSpan,
+                htmlspecialchars($summaryTitle)
+            );
+        } else {
+            $html .= sprintf(
+                '<td style="text-align: left;">%s</td>',
+                htmlspecialchars($summaryTitle)
+            );
+        }
+        
+        // Skip cells that were spanned
+        for ($i = 1; $i < $titleSpan; $i++) {
+            unset($summaryRow[$i]);
+        }
+        
+        // Calculate summary values and populate the summary row
+        foreach ($summaryConfig['summary'] as $colKey => $summaryDef) {
+            // Get the column index if a name was specified
+            $colIndex = $colKey;
+            
+            if (is_string($colKey) && !is_numeric($colKey)) {
+                $colIndex = array_search($colKey, $columns);
+            }
+            
+            if ($colIndex !== false && isset($columns[$colIndex])) {
+                // Get the column config for formatting
+                $columnConfig = $this->getColumnConfig($colIndex);
+                
+                // Parse summary definition
+                $operation = '';
+                
+                if (is_array($summaryDef)) {
+                    $operation = $summaryDef['operation'] ?? '';
+                } else {
+                    // If just a string operation is provided
+                    $operation = $summaryDef;
+                }
+                
+                if (!empty($operation)) {
+                    // Extract values for this column from all rows
+                    $values = array_column($rows, $colIndex);
+                    
+                    // Calculate summary value based on operation
+                    $summaryValue = $this->calculateSummaryValue($values, $operation);
+                    
+                    // Format the summary value according to the column type
+                    $formattedValue = $columnConfig->formatValue($summaryValue);
+                    
+                    // Add to the summary row
+                    $summaryRow[$colIndex] = $formattedValue;
+                }
+            }
+        }
+        
+        // Add the rest of the summary row cells
+        for ($i = $titleSpan; $i < count($columns); $i++) {
+            if (isset($summaryRow[$i])) {
+                // Get column styling
+                $columnConfig = $this->getColumnConfig($i);
+                $styleAttr = $columnConfig->getStyleString();
+                
+                $html .= sprintf(
+                    '<td%s>%s</td>',
+                    $styleAttr ? ' style="' . $styleAttr . '"' : '',
+                    htmlspecialchars($summaryRow[$i])
+                );
+            } else {
+                // Empty cell
+                $html .= '<td></td>';
+            }
+        }
+        
+        $html .= '</tr>';
+    }
+
+    /**
      * Add text to the current page
      * 
      * @param string $text Text to add
      * @param array $options Text formatting options
      * @return PDFGenerator
      */
-    public function addText(string $text, array $options = [])
+    public function addText(string $text, array $options = []): PDFGenerator
     {
         $fontSize = $options['font_size'] ?? $this->config['content_font_size'];
         $fontStyle = $options['font_style'] ?? '';
@@ -553,7 +582,7 @@ class PDFGenerator
      * @param int $spacing The amount of spacing to add in the current unit (usually mm)
      * @return PDFGenerator
      */
-    public function addSpacing(int $spacing = 5)
+    public function addSpacing(int $spacing = 5): PDFGenerator
     {
         $this->pdf->Ln($spacing);
         return $this;
@@ -564,13 +593,14 @@ class PDFGenerator
      * 
      * @param string $outputMode Output mode (B64 = base64, I = inline, D = download, F = file)
      * @param string $filename Filename for download or save modes
-     * @return mixed Base64 string, file path, or direct output depending on mode
+     * @return array Result with status, filename, and content
+     * @throws Exception If output mode is invalid
      */
-    public function output(string $outputMode = 'B64', string $filename = '')
+    public function output(string $outputMode = 'B64', string $filename = ''): array
     {
         // Default filename based on title if not provided
         if (empty($filename)) {
-            $filename = strtolower(str_replace(' ', '_', $this->config['title'])) . '.pdf';
+            $filename = $this->filename ?? strtolower(str_replace(' ', '_', $this->config['title'])) . '.pdf';
         }
 
         // Handle different output modes
@@ -617,7 +647,7 @@ class PDFGenerator
      * @param bool $hasContentBefore Whether there is content before the first table
      * @return PDFGenerator
      */
-    public function addTablesByCategoryPerPage($categoryColumn, $sortColumn = null, bool $ascending = true, array $options = [], bool $hasContentBefore = false)
+    public function addTablesByCategoryPerPage($categoryColumn, $sortColumn = null, bool $ascending = true, array $options = [], bool $hasContentBefore = false): PDFGenerator
     {
         // Use internal DataSorter to group data by category
         $this->sorter->setData($this->data);
@@ -698,7 +728,7 @@ class PDFGenerator
         array $options = [], 
         bool $hasContentBefore = false,
         array $groupConfig = []
-    ) {
+    ): PDFGenerator {
         // Use internal DataSorter to group data by multiple categories
         $this->sorter->setData($this->data);
         $this->sorter->setColumnConfigs($this->columnConfigs);
@@ -733,9 +763,9 @@ class PDFGenerator
 
         // Default group configuration
         $defaultGroupConfig = [
-            'pageBreak' => false,     // New flag to indicate if this level should start on a new page
+            'pageBreak' => false,     // Whether this level should start on a new page
             'showSummary' => false,   // Whether to show summary for this group
-            'summary' => [],   // Columns to include in the summary
+            'summary' => [],          // Columns to include in the summary
             'titleFormat' => null,    // Custom format for group titles
             'contentAfter' => null    // Text to add after each group
         ];
@@ -786,7 +816,7 @@ class PDFGenerator
                 $options, 
                 $normalizedGroupConfig, 
                 $defaultGroupConfig,
-                $processedCategories  // Track processed categories
+                $processedCategories
             );
             
             // If top level has summary configuration, add summary for all data in this top-level category
@@ -816,12 +846,12 @@ class PDFGenerator
      * @param array $categoryColumns The column indices or names for grouping
      * @return array Normalized group configuration with numeric indices
      */
-    private function normalizeGroupConfig(array $groupConfig, array $categoryColumns)
+    private function normalizeGroupConfig(array $groupConfig, array $categoryColumns): array
     {
         $normalized = [];
         $columns = $this->data['columns'] ?? [];
         
-        // First pass: handle column name keys at the top level
+        // Handle column name keys at the top level
         foreach ($groupConfig as $key => $config) {
             $index = $key;
             
@@ -838,7 +868,6 @@ class PDFGenerator
                 
                 if (!$found) {
                     // It might be a column name not in the category columns - leave it as is
-                    // This helps maintain backward compatibility
                     $index = $key;
                 }
             }
@@ -855,7 +884,7 @@ class PDFGenerator
      * @param array $nestedData Nested data from grouping
      * @return array Flattened array of all rows
      */
-    private function extractAllRowsFromNestedData($nestedData)
+    private function extractAllRowsFromNestedData($nestedData): array
     {
         $allRows = [];
         
@@ -890,7 +919,7 @@ class PDFGenerator
      * @param array $columns Column names
      * @param array $groupConfig Group configuration
      */
-    private function addGroupSummary($rows, $columns, $groupConfig)
+    private function addGroupSummary(array $rows, array $columns, array $groupConfig): void
     {
         // Skip if no data or no summary columns specified
         if (empty($rows) || empty($groupConfig['summary'])) {
@@ -1010,7 +1039,7 @@ class PDFGenerator
      * @param string $operation The operation to perform (sum, avg, count, min, max)
      * @return mixed Calculated summary value
      */
-    private function calculateSummaryValue(array $values, $operation)
+    private function calculateSummaryValue(array $values, string $operation)
     {
         // Filter out non-numeric values for numeric operations
         $numericOperations = ['sum', 'avg', 'min', 'max'];
@@ -1068,16 +1097,16 @@ class PDFGenerator
      * @return bool Whether any content was actually rendered
      */
     private function renderNestedCategories(
-        $data, 
-        $level, 
-        $path, 
-        &$categoryColNames, 
-        $columns, 
-        $options,
-        $normalizedGroupConfig,
-        $defaultGroupConfig,
-        &$processedCategories
-    ) {
+        array $data, 
+        int $level, 
+        array $path, 
+        array $categoryColNames, 
+        array $columns, 
+        array $options,
+        array $normalizedGroupConfig,
+        array $defaultGroupConfig,
+        array &$processedCategories
+    ): bool {
         if (empty($data)) {
             return false;
         }
@@ -1137,12 +1166,7 @@ class PDFGenerator
             $title = $categoryColName . ": " . $category;
             
             // Calculate font size based on level - the deeper the level, the smaller the font
-            $baseFontSize = $this->config['title_font_size'] ?? 16; // Default title font size
-            $levelReduction = 2.5; // Reduction in font size per level
-            $minFontSize = 10; // Minimum font size
-            
-            // Calculate font size: Start with base size and reduce by level
-            $titleFontSize = max($baseFontSize - ($level * $levelReduction), $minFontSize);
+            $titleFontSize = $this->calculateTitleFontSize($level);
             
             // Use custom title format if provided
             if (isset($levelConfig['titleFormat']) && is_callable($levelConfig['titleFormat'])) {
@@ -1245,7 +1269,7 @@ class PDFGenerator
      * @param array $nestedData Nested data structure to check
      * @return bool True if there is actual content, false otherwise
      */
-    private function hasContentInNestedData($nestedData)
+    private function hasContentInNestedData(array $nestedData): bool
     {
         if (empty($nestedData)) {
             return false;
@@ -1268,57 +1292,13 @@ class PDFGenerator
     }
 
     /**
-     * Check if any lower level has newPage=true in the group config
-     * 
-     * @param array $normalizedGroupConfig The normalized group configuration
-     * @param int $currentLevel The current level to check from
-     * @return bool True if any lower level has newPage=true, false otherwise
-     */
-    private function hasLowerLevelPageBreak($normalizedGroupConfig, $currentLevel)
-    {
-        // Check all levels higher than the current level
-        foreach ($normalizedGroupConfig as $level => $config) {
-            // Only check levels higher than the current one
-            if ($level > $currentLevel && isset($config['newPage']) && $config['newPage'] === true) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-
-    /**
-     * Check if a group has any direct content (tables)
-     * This helps determine if we should show group titles for intermediate nodes
-     * 
-     * @param array $nestedData Nested data structure to check
-     * @return bool True if there are any direct tables in this group
-     */
-    private function hasDirectContent($nestedData)
-    {
-        if (empty($nestedData)) {
-            return false;
-        }
-        
-        // Check if any direct children are leaf nodes (tables)
-        foreach ($nestedData as $category => $contents) {
-            if (isset($contents[0]) && is_array($contents[0])) {
-                return true;  // Found a direct table
-            }
-        }
-        
-        // No direct tables found at this level
-        return false;
-    }
-
-    /**
      * Convert associative array rows to indexed arrays based on column names
      * 
      * @param array $rows The rows data which may contain associative arrays
      * @param array $columns The column names to use as reference
      * @return array Normalized rows with indexed arrays
      */
-    private function normalizeRowsFormat(array $rows, array $columns)
+    private function normalizeRowsFormat(array $rows, array $columns): array
     {
         $normalizedRows = [];
         
