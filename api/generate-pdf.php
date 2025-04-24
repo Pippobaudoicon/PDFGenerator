@@ -44,6 +44,11 @@ try {
         'format' => $data['format'] ?? 'A4',
     ];
 
+    // Add header/logo config if present
+    if (isset($data['header_logo'])) {
+        $config['header_logo'] = $data['header_logo'];
+    }
+
     // Initialize the PDF generator
     $generator = new PDFGenerator($config);
 

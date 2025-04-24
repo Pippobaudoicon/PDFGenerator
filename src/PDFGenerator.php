@@ -41,7 +41,7 @@ class PDFGenerator
         'content_font_size' => 10,
         'table_border' => 1,
         'table_padding' => 5,
-        'title_level_reduction' => 2.5,  // Font size reduction per level in hierarchical titles
+        'title_level_reduction' => 2,  // Font size reduction per level in hierarchical titles
         'title_min_font_size' => 10,     // Minimum font size for hierarchical titles
     ];
 
@@ -53,6 +53,9 @@ class PDFGenerator
 
     /** @var array Column configurations */
     private $columnConfigs = [];
+
+    /** @var array|null Header/logo configuration */
+    private $headerLogo = null;
 
     /**
      * Constructor - Initialize the PDF generator with configuration
@@ -67,6 +70,11 @@ class PDFGenerator
 
         // Merge provided config with defaults
         $this->config = array_merge($this->defaultConfig, $config);
+
+        // Store header/logo config if present
+        if (isset($this->config['header_logo'])) {
+            $this->headerLogo = $this->config['header_logo'];
+        }
 
         // Initialize TCPDF instance
         $this->initializePDF();
@@ -312,7 +320,41 @@ class PDFGenerator
         } else {
             $this->pdf->AddPage($orientation);
         }
+        // Draw header/logo if configured
+        if ($this->headerLogo) {
+            $this->drawHeaderLogo();
+        }
         return $this;
+    }
+
+    /**
+     * Draws the header logo/image on the current page if configured
+     */
+    private function drawHeaderLogo()
+    {
+        $logo = $this->headerLogo;
+        if (empty($logo['image'])) return;
+        $img = $logo['image'];
+        $height = isset($logo['height']) ? floatval($logo['height']) : 20;
+        $align = isset($logo['align']) ? strtolower($logo['align']) : 'right';
+        $margin = 5;
+        // Default position: top-right
+        $x = null;
+        $y = $this->config['margins'][1];
+        // Get page width and margins
+        $pageWidth = $this->pdf->getPageWidth();
+        $leftMargin = $this->config['margins'][0];
+        $rightMargin = $this->config['margins'][2];
+        // Calculate X based on alignment
+        if ($align === 'left') {
+            $x = $leftMargin + $margin;
+        } else { // right or default
+            // Estimate image width (TCPDF can auto-scale, but we need a guess for placement)
+            $imgWidth = $height * 2; // assume logo is wider than tall
+            $x = $pageWidth - $rightMargin - $imgWidth - $margin;
+        }
+        // Draw image (TCPDF will keep aspect ratio if width is 0)
+        $this->pdf->Image($img, $x, $y, 0, $height, '', '', '', false, 300, '', false, false, 0, false, false, false);
     }
 
     /**
